@@ -2,8 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Solar System</title>
-  <link rel="icon" type="image/png" id="favicon" />
+  <link rel="icon" type="image/png" id="favicon" sizes="any" />
+  <link rel="icon" type="image/png" id="favicon-16" sizes="16x16" />
+  <link rel="icon" type="image/png" id="favicon-32" sizes="32x32" />
+  <link rel="icon" type="image/png" id="favicon-192" sizes="192x192" />
+  <link rel="apple-touch-icon" id="apple-icon" sizes="180x180" />
   <style>
     :root {
       --black: #000000;
@@ -1013,13 +1018,18 @@
   <script>
     // Set favicon with correct base path
     (function() {
-      const favicon = document.getElementById('favicon');
-      if (favicon) {
-        // Get base path from current location
-        const path = window.location.pathname;
-        const basePath = path.includes('/Solar-System/') ? '/Solar-System/' : '/';
-        favicon.href = basePath + 'SolarIcon.png';
-      }
+      // Get base path from current location
+      const path = window.location.pathname;
+      const basePath = path.includes('/Solar-System/') ? '/Solar-System/' : '/';
+      const iconPath = basePath + 'SolarIcon.png';
+      
+      // Set all favicon sizes to the same icon
+      ['favicon', 'favicon-16', 'favicon-32', 'favicon-192', 'apple-icon'].forEach(id => {
+        const icon = document.getElementById(id);
+        if (icon) {
+          icon.href = iconPath;
+        }
+      });
     })();
     
     function toggleCelestialPanel() {
