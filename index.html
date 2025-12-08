@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>3D Solar System Explorer | Soumya</title>
+  <title>Solar System</title>
+  <link rel="icon" type="image/png" id="favicon" />
   <style>
     :root {
       --black: #000000;
@@ -1010,6 +1011,17 @@
   <script type="module" src="./main.js"></script>
   
   <script>
+    // Set favicon with correct base path
+    (function() {
+      const favicon = document.getElementById('favicon');
+      if (favicon) {
+        // Get base path from current location
+        const path = window.location.pathname;
+        const basePath = path.includes('/Solar-System/') ? '/Solar-System/' : '/';
+        favicon.href = basePath + 'SolarIcon.png';
+      }
+    })();
+    
     function toggleCelestialPanel() {
       const panel = document.getElementById('celestialPanel');
       const icon = panel.querySelector('.toggle-icon');
