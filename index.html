@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>3D Solar System Explorer | Soumya</title>
+  <style>
+    :root {
+      --black: #000000;
+      --white: #ffffff;
+      --gray-light: #e0e0e0;
+      --gray: #808080;
+      --gray-dark: #404040;
+      --gray-darker: #202020;
+      
+      --panel-bg: rgba(0, 0, 0, 0.9);
+      --panel-border: rgba(255, 255, 255, 0.3);
+      --panel-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
+      --button-primary: #000000;
+      --button-secondary: #202020;
+      --button-active: #ffffff;
+      --button-hover: #404040;
+      --text-primary: #ffffff;
+      --text-secondary: #e0e0e0;
+      --text-accent: #ffffff;
+      
+      --font-primary: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body { 
+      margin: 0; 
+      overflow: hidden; 
+      background: var(--black); 
+      font-family: var(--font-primary);
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    
+    canvas { display: block; }
+    
+    
+    .controls {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      background: var(--panel-bg);
+      color: var(--text-primary);
+      border-radius: 4px;
+      border: 1px solid var(--panel-border);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--panel-shadow);
+      min-width: 200px;
+      max-height: 400px;
+      overflow: hidden;
+      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      font-size: 12px;
+      font-family: var(--font-primary);
+    }
+    
+    .control-group {
+      margin-bottom: 6px;
+    }
+    
+    .control-group label {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 10px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-family: var(--font-primary);
+    }
+    
+    .control-group input[type="range"] {
+      width: 100%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 0;
+      outline: none;
+      margin-bottom: 2px;
+    }
+    
+    .control-group input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 10px;
+      height: 10px;
+      background: var(--white);
+      border-radius: 0;
+      cursor: pointer;
+      box-shadow: 0 0 6px rgba(255, 255, 255, 0.5);
+    }
+    
+    .control-group button {
+      background: var(--button-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--panel-border);
+      padding: 6px 12px;
+      border-radius: 2px;
+      cursor: pointer;
+      margin-right: 4px;
+      margin-bottom: 4px;
+      font-size: 11px;
+      font-family: var(--font-primary);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.3s ease;
+      transform: translateZ(0);
+    }
+
+    .follow-planet-btn {
+      background: var(--white);
+      color: var(--black);
+      border: 2px solid var(--white);
+      padding: 12px 24px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      transition: all 0.3s ease;
+      width: 100%;
+      margin-top: 15px;
+      box-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
+      transform: translateZ(0);
+    }
+
+    .follow-planet-btn:hover {
+      background: var(--gray-light);
+      transform: translateY(-3px) translateZ(0);
+      box-shadow: 0 8px 25px rgba(255, 255, 255, 0.4);
+    }
+
+    .follow-planet-btn.following {
+      background: var(--gray-dark);
+      color: var(--text-primary);
+      border-color: var(--gray);
+      box-shadow: 0 4px 15px rgba(128, 128, 128, 0.3);
+    }
+
+    .follow-planet-btn.following:hover {
+      background: var(--gray);
+      box-shadow: 0 6px 20px rgba(128, 128, 128, 0.5);
+    }
+    
+    .control-group button:hover {
+      background: var(--button-hover);
+      box-shadow: 0 0 10px rgba(11, 61, 145, 0.5);
+      transform: translateY(-1px);
+    }
+    
+    .control-group button.active {
+      background: var(--button-active);
+      color: var(--black);
+      box-shadow: 0 0 15px rgba(255, 214, 10, 0.6);
+    }
+
+    .value-display {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-accent);
+      font-weight: 600;
+    }
+
+    
+    .control-header {
+      padding: 12px 16px;
+      background: var(--black);
+      border-bottom: 1px solid var(--panel-border);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.3s ease;
+    }
+
+    .control-header h3 {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text-accent);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .control-toggle-icon {
+      font-size: 14px;
+      transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .control-content {
+      max-height: 300px;
+      overflow-y: auto;
+      transition: max-height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), padding 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      padding: 8px;
+    }
+
+    .controls.collapsed .control-content {
+      max-height: 0;
+      padding: 0 8px;
+    }
+
+    .controls.collapsed .control-toggle-icon {
+      transform: rotate(180deg);
+    }
+    
+    
+    
+    
+    .celestial-panel {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: var(--panel-bg);
+      color: var(--text-primary);
+      border-radius: 4px;
+      border: 1px solid var(--panel-border);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--panel-shadow);
+      min-width: 200px;
+      max-height: 400px;
+      overflow: hidden;
+      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      font-family: var(--font-primary);
+    }
+
+    .celestial-header {
+      padding: 12px 16px;
+      background: var(--black);
+      border-bottom: 1px solid var(--panel-border);
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: background 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .celestial-header h4 {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text-accent);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .toggle-icon {
+      font-size: 16px;
+      transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .celestial-content {
+      max-height: 290px;
+      overflow-y: auto;
+      transition: max-height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .celestial-panel.collapsed .celestial-content {
+      max-height: 0;
+    }
+
+    .celestial-panel.collapsed .toggle-icon {
+      transform: rotate(180deg);
+    }
+
+    .celestial-controls {
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.5);
+      border-bottom: 1px solid var(--panel-border);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .label-toggle {
+      background: var(--button-secondary);
+      color: var(--text-primary);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 4px 8px;
+      border-radius: 2px;
+      cursor: pointer;
+      font-size: 10px;
+      font-family: var(--font-primary);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      width: 100%;
+      transform: translateZ(0);
+    }
+
+    .label-toggle:hover {
+      background: var(--button-hover);
+      box-shadow: 0 0 10px rgba(11, 61, 145, 0.5);
+      transform: translateY(-1px) translateZ(0);
+    }
+
+    .label-toggle.active {
+      background: var(--white);
+      color: var(--black);
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+    }
+    
+    .planet-item {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      font-size: 11px;
+      font-family: var(--font-primary);
+      transform: translateZ(0); 
+    }
+    
+    .planet-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateX(5px) translateZ(0);
+      box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
+    }
+
+    .planet-item strong {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 12px;
+    }
+    
+    .planet-item.planet strong {
+      color: var(--white);
+    }
+
+    .planet-item.dwarf strong {
+      color: var(--gray-light);
+    }
+
+    .planet-item.asteroid strong {
+      color: var(--gray);
+    }
+
+    .planet-item.tno strong {
+      color: var(--gray-dark);
+    }
+
+    .category-header {
+      background: var(--black);
+      color: var(--text-accent);
+      padding: 8px 12px;
+      margin: 8px 0 4px 0;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      border-radius: 2px;
+      border: 1px solid var(--panel-border);
+    }
+
+    .planet-item small {
+      font-family: var(--font-primary);
+      font-weight: 400;
+      opacity: 0.8;
+    }
+
+    
+    .planet-label {
+      position: absolute;
+      background: rgba(0, 0, 0, 0.9);
+      color: var(--text-primary);
+      padding: 2px 6px;
+      border-radius: 2px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      pointer-events: none;
+      border: 1px solid var(--panel-border);
+      backdrop-filter: blur(5px);
+      z-index: 1000;
+      transition: opacity 0.3s ease;
+    }
+
+    
+    .moon-label {
+      position: absolute;
+      background: rgba(32, 32, 32, 0.9);
+      color: var(--text-primary);
+      padding: 1px 4px;
+      border-radius: 2px;
+      font-family: var(--font-primary);
+      font-size: 8px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      pointer-events: none;
+      border: 1px solid var(--panel-border);
+      backdrop-filter: blur(3px);
+      z-index: 999;
+      transition: opacity 0.3s ease;
+    }
+
+    
+    .celestial-content::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .celestial-content::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 0;
+    }
+
+    .celestial-content::-webkit-scrollbar-thumb {
+      background: var(--white);
+      border-radius: 0;
+    }
+
+    
+    .control-content::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .control-content::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 0;
+    }
+
+    .control-content::-webkit-scrollbar-thumb {
+      background: var(--white);
+      border-radius: 0;
+    }
+
+    
+    .ui-hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-20px);
+      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    #showUIBtn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: var(--panel-bg);
+      color: var(--text-primary);
+      border: 1px solid var(--panel-border);
+      border-radius: 3px;
+      padding: 8px 12px;
+      font-family: var(--font-primary);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 20px rgba(11, 61, 145, 0.3);
+      display: none;
+      transition: all 0.3s ease;
+      z-index: 1001;
+    }
+
+    #showUIBtn:hover {
+      background: var(--gray-dark);
+      transform: scale(1.05);
+    }
+
+    
+    .planet-info-card {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--panel-bg);
+      color: var(--text-primary);
+      border-radius: 4px;
+      border: 2px solid var(--panel-border);
+      backdrop-filter: blur(15px);
+      box-shadow: var(--panel-shadow);
+      min-width: 400px;
+      max-width: 500px;
+      max-height: 80vh;
+      z-index: 2000;
+      font-family: var(--font-primary);
+      display: none;
+      animation: slideIn 0.3s ease-out;
+      overflow: hidden;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+      }
+    }
+
+    .planet-info-header {
+      background: var(--black);
+      padding: 15px 20px;
+      border-radius: 4px 4px 0 0;
+      border-bottom: 2px solid var(--panel-border);
+      position: relative;
+      position: sticky;
+      top: 0;
+      z-index: 2001;
+    }
+
+    .planet-info-title {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 24px;
+      color: var(--text-primary);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .planet-type-badge {
+      background: var(--white);
+      color: var(--black);
+      padding: 4px 8px;
+      border-radius: 2px;
+      font-family: var(--font-primary);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: none;
+      border: none;
+      color: var(--text-primary);
+      font-size: 24px;
+      cursor: pointer;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    .close-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: scale(1.1);
+    }
+
+    .planet-info-content {
+      padding: 20px;
+      max-height: calc(80vh - 80px);
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    
+    .planet-info-content::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .planet-info-content::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 0;
+    }
+
+    .planet-info-content::-webkit-scrollbar-thumb {
+      background: var(--white);
+      border-radius: 0;
+    }
+
+    .info-section {
+      margin-bottom: 20px;
+    }
+
+    .info-section h4 {
+      margin: 0 0 10px 0;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-accent);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 1px solid var(--panel-border);
+      padding-bottom: 5px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .info-item {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 12px;
+      border-radius: 2px;
+      border: 1px solid var(--panel-border);
+    }
+
+    .info-item-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-accent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 5px;
+    }
+
+    .info-item-value {
+      font-family: var(--font-primary);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .planet-description {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 15px;
+      border-radius: 2px;
+      border-left: 4px solid var(--white);
+      font-family: var(--font-primary);
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      margin-bottom: 15px;
+    }
+
+    .moons-section {
+      background: rgba(0, 0, 0, 0.5);
+      padding: 15px;
+      border-radius: 2px;
+      border: 1px solid var(--panel-border);
+    }
+
+    .moon-item {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      align-items: stretch;
+      padding: 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      font-family: var(--font-primary);
+      box-sizing: border-box;
+    }
+
+    .moon-item:last-child {
+      border-bottom: none;
+    }
+
+    .moon-name {
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 13px;
+      text-align: center;
+      padding: 12px 15px;
+      border-right: 1px solid rgba(255, 255, 255, 0.2);
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .moon-info {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-align: center;
+      line-height: 1.8;
+      padding: 12px 15px;
+      border-right: 1px solid rgba(255, 255, 255, 0.2);
+      box-sizing: border-box;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .moon-info span {
+      width: 100%;
+      display: block;
+    }
+
+    .moon-follow-btn {
+      text-align: center;
+      padding: 12px 15px;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .follow-moon-btn {
+      background: var(--gray-dark);
+      color: var(--text-primary);
+      border: 1px solid var(--panel-border);
+      padding: 4px 8px;
+      border-radius: 2px;
+      cursor: pointer;
+      font-family: var(--font-primary);
+      font-weight: 600;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.3s ease;
+      display: inline-block;
+      margin: 0 auto;
+    }
+
+    .follow-moon-btn:hover {
+      background: var(--gray);
+      transform: translateY(-1px);
+      box-shadow: 0 3px 10px rgba(255, 255, 255, 0.2);
+    }
+
+    .follow-sun-btn {
+      background: var(--gray-dark);
+      color: var(--text-primary);
+      border: 1px solid var(--panel-border);
+      padding: 8px 16px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.3s ease;
+      width: 100%;
+      margin: 0;
+    }
+
+    .follow-sun-btn:hover {
+      background: var(--gray);
+      transform: translateY(-1px);
+      box-shadow: 0 3px 10px rgba(255, 255, 255, 0.2);
+    }
+
+
+    .orbital-period-display {
+      background: var(--black);
+      padding: 10px;
+      border-radius: 0;
+      text-align: center;
+      margin-top: 15px;
+    }
+
+    .orbital-period-value {
+      font-family: var(--font-mono);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-accent);
+    }
+
+    .orbital-period-label {
+      font-family: var(--font-primary);
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .controls-info {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 15px;
+      border-radius: 2px;
+      border: 1px solid var(--panel-border);
+    }
+
+    .control-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-family: var(--font-primary);
+    }
+
+    .control-item:last-child {
+      border-bottom: none;
+    }
+
+    .control-icon {
+      font-size: 16px;
+      width: 20px;
+      text-align: center;
+    }
+
+    .control-text {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    .control-text strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    
+    .language-switcher {
+      position: fixed;
+      bottom: 15px;
+      right: 15px;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 3px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--panel-shadow);
+      padding: 8px;
+      z-index: 1000;
+      display: flex;
+      gap: 4px;
+      font-family: var(--font-primary);
+    }
+
+    .lang-btn {
+      background: var(--button-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--panel-border);
+      padding: 8px 16px;
+      border-radius: 2px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.3s ease;
+      min-width: 60px;
+    }
+
+    .lang-btn:hover {
+      background: var(--button-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+    }
+
+    .lang-btn.active {
+      background: var(--button-active);
+      color: var(--black);
+      border-color: var(--white);
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+    }
+
+    @media (max-width: 768px) {
+      .language-switcher {
+        bottom: 10px;
+        right: 10px;
+        padding: 6px;
+      }
+      
+      .lang-btn {
+        padding: 6px 12px;
+        font-size: 11px;
+        min-width: 50px;
+      }
+    }
+
+  </style>
+</head>
+<body>
+  
+  <button id="showUIBtn">Show UI</button>
+
+  <div class="controls collapsed" id="uiControls">
+    <div class="control-header" onclick="toggleControlPanel()">
+      <h3>Control <span class="control-toggle-icon">►</span></h3>
+    </div>
+    <div class="control-content">
+      <div class="control-group">
+        <label>Speed (Earth Time)</label>
+        <input type="range" id="speedControl" min="0" max="10" step="0.05" value="0.4">
+        <span id="speedValue" class="value-display">0.4x Slow</span>
+      </div>
+      
+      <div class="control-group">
+        <label>Bloom</label>
+        <input type="range" id="bloomControl" min="0" max="2" step="0.1" value="0.4">
+        <span id="bloomValue" class="value-display">0.4</span>
+      </div>
+      
+      <div class="control-group">
+        <button id="pauseBtn">Pause</button>
+        <button id="resetBtn">Reset</button>
+        <button id="hideUIBtn">Hide UI</button>
+      </div>
+
+      <div class="control-group">
+        <label>Camera Control</label>
+        <button id="stopFollowBtn" style="display: none;" class="active">🛑 Stop Follow</button>
+      </div>
+      
+      <div class="control-group">
+        <button id="followSunBtn" class="follow-sun-btn">☀️ Follow Sun</button>
+      </div>
+
+      <div class="control-group">
+        <label>Toggle</label>
+        <button id="orbitsBtn" class="active">Orbits</button>
+        <button id="moonsBtn" class="active">Moons</button>
+        <button id="realAsteroidsBtn" class="active">Real Asteroids</button>
+        <button id="cometsBtn" class="active">Comets</button>
+      </div>
+      
+      <div class="control-group">
+        <label>Asteroid Belts</label>
+        <button id="allAsteroidsBtn" class="active">All Belts</button>
+        <button id="mainAsteroidsBtn" class="active">Main Belt</button>
+        <button id="trojansBtn" class="active">Trojans</button>
+        <button id="kuiperBtn" class="active">Kuiper</button>
+        <button id="scatteredBtn" class="active">Scattered</button>
+      </div>
+    </div>
+  </div>
+  
+  
+  <div class="celestial-panel collapsed" id="celestialPanel">
+    <div class="celestial-header" onclick="toggleCelestialPanel()">
+      <h4>Celestial Bodies <span class="toggle-icon">►</span></h4>
+    </div>
+    <div class="celestial-content">
+      <div class="celestial-controls">
+        <button id="labelToggle" class="label-toggle">Show Planet Names</button>
+        <button id="moonLabelToggle" class="label-toggle">Show Moon Names</button>
+      </div>
+      <div id="planetList"></div>
+    </div>
+  </div>
+  
+  <div id="planetInfoCard" class="planet-info-card">
+    <div class="planet-info-header">
+      <h2 class="planet-info-title">
+        <span id="planetIcon">🪐</span>
+        <span id="planetName">SATURN</span>
+        <span id="planetTypeBadge" class="planet-type-badge">PLANET</span>
+      </h2>
+      <button class="close-btn" id="closePlanetInfo">×</button>
+    </div>
+    <div class="planet-info-content">
+      <div class="info-section">
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-item-label">Orbital Period</div>
+            <div class="info-item-value" id="orbitalPeriod">29 years</div>
+          </div>
+          <div class="info-item">
+            <div class="info-item-label">Size (Relative to Earth)</div>
+            <div class="info-item-value" id="sizeRelative">1.7x Earth</div>
+          </div>
+          <div class="info-item">
+            <div class="info-item-label">Distance from Sun</div>
+            <div class="info-item-value" id="distanceFromSun">31 AU</div>
+          </div>
+          <div class="info-item">
+            <div class="info-item-label">Discovery Year</div>
+            <div class="info-item-value" id="discoveryYear">Ancient</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-section">
+        <div class="planet-description" id="planetDescription">
+          Famous for its prominent ring system. Less dense than water. Has 146 known moons.
+        </div>
+      </div>
+
+      <div class="info-section" id="moonsSection">
+        <h4>🌙 Moons (<span id="moonCount">9</span>)</h4>
+        <div class="moons-section" id="moonsContainer">
+        </div>
+      </div>
+
+      <div class="info-section">
+        <button id="followPlanetBtn" class="follow-planet-btn">
+          🎯 FOLLOW PLANET
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="language-switcher">
+    <button class="lang-btn active" id="langEn" data-lang="en">EN</button>
+    <button class="lang-btn" id="langUk" data-lang="uk">UA</button>
+    <button class="lang-btn" id="langCs" data-lang="cs">CS</button>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+  
+  <script>
+    function toggleCelestialPanel() {
+      const panel = document.getElementById('celestialPanel');
+      const icon = panel.querySelector('.toggle-icon');
+      
+      panel.classList.toggle('collapsed');
+      
+      
+      if (panel.classList.contains('collapsed')) {
+        icon.textContent = '►';
+      } else {
+        icon.textContent = '▼';
+      }
+      
+    }
+
+    function toggleControlPanel() {
+      const panel = document.getElementById('uiControls');
+      const icon = panel.querySelector('.control-toggle-icon');
+      
+      panel.classList.toggle('collapsed');
+      
+      
+      if (panel.classList.contains('collapsed')) {
+        icon.textContent = '►';
+      } else {
+        icon.textContent = '▼';
+      }
+    }
+
+    function toggleCelestialPanel() {
+      const panel = document.getElementById('celestialPanel');
+      const icon = panel.querySelector('.toggle-icon');
+      
+      panel.classList.toggle('collapsed');
+      
+      
+      if (panel.classList.contains('collapsed')) {
+        icon.textContent = '►';
+      } else {
+        icon.textContent = '▼';
+      }
+    }
+  </script>
+</body>
+</html>
