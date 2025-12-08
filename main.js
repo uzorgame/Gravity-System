@@ -9,6 +9,7 @@ import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 const NASA_API_KEY = "CH3TuB34hg317ulEggcZCMlKgCCPYQeTzdzJDNCz";
+const BASE_URL = import.meta.env.BASE_URL || '/';
 let currentLanguage = localStorage.getItem('appLanguage') || 'en';
 const translations = {
   en: {
@@ -585,7 +586,7 @@ const fillLight = new THREE.PointLight(new THREE.Color(0.2, 0.4, 1.0), 2.0, 100,
 fillLight.position.set(50, 50, -100);
 scene.add(fillLight);
 const sunMaterial = new THREE.MeshBasicMaterial({
-  map: loader.load("/textures/sun.jpg"),
+  map: loader.load(`${BASE_URL}textures/sun.jpg`),
   emissive: new THREE.Color(1.5, 1.2, 0.8),
   emissiveIntensity: 1.8,
   toneMapped: false,
@@ -594,8 +595,8 @@ const sunMaterial = new THREE.MeshBasicMaterial({
 const sun = new THREE.Mesh(new THREE.SphereGeometry(5, 64, 64), sunMaterial);
 scene.add(sun);
 const textureLoader = new THREE.TextureLoader();
-const textureFlare0 = textureLoader.load("/textures/lensflare0.png");
-const textureFlare2 = textureLoader.load("/textures/lensflare2.png");
+const textureFlare0 = textureLoader.load(`${BASE_URL}textures/lensflare0.png`);
+const textureFlare2 = textureLoader.load(`${BASE_URL}textures/lensflare2.png`);
 const lensflare = new Lensflare();
 lensflare.addElement(new LensflareElement(textureFlare0, 512, 0, new THREE.Color(1, 0.9, 0.8)));
 lensflare.addElement(new LensflareElement(textureFlare2, 128, 0.2, new THREE.Color(1, 1, 0.6)));
@@ -1660,7 +1661,7 @@ let moonSTLGeometry = null;
 let moonMeshRef = null; // Reference to moon mesh for geometry update
 
 stlLoader.load(
-  '/textures/vesta_moon.stl',
+  `${BASE_URL}textures/vesta_moon.stl`,
   (geometry) => {
     moonSTLGeometry = geometry;
     console.log('Moon STL model loaded successfully');
@@ -1699,7 +1700,7 @@ let emuGLTFModel = null;
 let spaceObjectMeshesRefs = []; // References to space object meshes for model update
 
 gltfLoader.load(
-  '/textures/emu_spacesuit.glb',
+  `${BASE_URL}textures/emu_spacesuit.glb`,
   (gltf) => {
     emuGLTFModel = gltf;
     console.log('EMU spacesuit GLB model loaded successfully', gltf);
@@ -1845,7 +1846,7 @@ const planetMeshes = [];
 celestialBodies.forEach((body) => {
   let material;
   if (body.texture) {
-    const texturePath = `/textures/${body.texture}`;
+    const texturePath = `${BASE_URL}textures/${body.texture}`;
     const texture = loader.load(texturePath);
     material = new THREE.MeshStandardMaterial({
       map: texture,
@@ -1941,7 +1942,7 @@ celestialBodies.forEach((body) => {
   }
   scene.add(orbit);
   if (body.hasRings) {
-    const ringTex = loader.load("/textures/saturn_ring.png");
+    const ringTex = loader.load(`${BASE_URL}textures/saturn_ring.png`);
     const ringGeo = new THREE.RingGeometry(
       body.size + 0.5,
       body.size + 1.2,
