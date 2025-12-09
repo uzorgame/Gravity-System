@@ -1908,6 +1908,176 @@ gltfLoader.setDRACOLoader(dracoLoader);
 let emuGLTFModel = null;
 let mavenGLTFModel = null;
 let junoGLTFModel = null;
+
+// Create procedural texture for MAVEN spacecraft
+function createMAVENTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+  
+  // Base metallic silver color
+  const baseColor = { r: 180, g: 180, b: 190 };
+  
+  // Fill with base color
+  ctx.fillStyle = `rgb(${baseColor.r}, ${baseColor.g}, ${baseColor.b})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Add panel variations (solar panels, body panels)
+  for (let i = 0; i < 20; i++) {
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height;
+    const width = 50 + Math.random() * 150;
+    const height = 50 + Math.random() * 150;
+    
+    // Slightly different shades for panels
+    const variation = 10 + Math.random() * 15;
+    const panelColor = {
+      r: Math.max(0, Math.min(255, baseColor.r + (Math.random() > 0.5 ? variation : -variation))),
+      g: Math.max(0, Math.min(255, baseColor.g + (Math.random() > 0.5 ? variation : -variation))),
+      b: Math.max(0, Math.min(255, baseColor.b + (Math.random() > 0.5 ? variation : -variation)))
+    };
+    
+    ctx.fillStyle = `rgb(${panelColor.r}, ${panelColor.g}, ${panelColor.b})`;
+    ctx.fillRect(x, y, width, height);
+  }
+  
+  // Add seams and lines (structural details)
+  ctx.strokeStyle = `rgb(${baseColor.r - 20}, ${baseColor.g - 20}, ${baseColor.b - 20})`;
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 15; i++) {
+    ctx.beginPath();
+    const x1 = Math.random() * canvas.width;
+    const y1 = Math.random() * canvas.height;
+    const x2 = x1 + (Math.random() - 0.5) * 200;
+    const y2 = y1 + (Math.random() - 0.5) * 200;
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+  
+  // Add small details (screws, connectors)
+  ctx.fillStyle = `rgb(${baseColor.r - 30}, ${baseColor.g - 30}, ${baseColor.b - 30})`;
+  for (let i = 0; i < 50; i++) {
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height;
+    ctx.beginPath();
+    ctx.arc(x, y, 2 + Math.random() * 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  // Add highlights (metallic reflections)
+  const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  gradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+  gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
+  gradient.addColorStop(1, 'rgba(200, 200, 220, 0.15)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Add noise for texture detail
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const noise = (Math.random() - 0.5) * 8;
+    data[i] = Math.max(0, Math.min(255, data[i] + noise));     // R
+    data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise)); // G
+    data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + noise)); // B
+  }
+  ctx.putImageData(imageData, 0, 0);
+  
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, 1);
+  texture.needsUpdate = true;
+  
+  return texture;
+}
+
+// Create normal map for MAVEN (surface details)
+function createMAVENNormalMap() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+  
+  // Base normal color (flat surface)
+  ctx.fillStyle = 'rgb(128, 128, 255)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Add surface details (panels, seams)
+  ctx.strokeStyle = 'rgb(100, 100, 255)';
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 10; i++) {
+    ctx.beginPath();
+    const x1 = Math.random() * canvas.width;
+    const y1 = Math.random() * canvas.height;
+    const x2 = x1 + (Math.random() - 0.5) * 200;
+    const y2 = y1 + (Math.random() - 0.5) * 200;
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+  
+  // Add small bumps
+  ctx.fillStyle = 'rgb(150, 150, 255)';
+  for (let i = 0; i < 30; i++) {
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height;
+    ctx.beginPath();
+    ctx.arc(x, y, 3 + Math.random() * 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, 1);
+  texture.needsUpdate = true;
+  
+  return texture;
+}
+
+// Create roughness map for MAVEN (variations in surface smoothness)
+function createMAVENRoughnessMap() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+  
+  // Base roughness (smooth metallic)
+  ctx.fillStyle = 'rgb(80, 80, 80)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Add variations (some areas more rough, some smoother)
+  for (let i = 0; i < 15; i++) {
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height;
+    const radius = 30 + Math.random() * 50;
+    const roughness = 60 + Math.random() * 40;
+    
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    gradient.addColorStop(0, `rgb(${roughness}, ${roughness}, ${roughness})`);
+    gradient.addColorStop(1, 'rgb(80, 80, 80)');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, 1);
+  texture.needsUpdate = true;
+  
+  return texture;
+}
+
+// Pre-generate textures for MAVEN
+const mavenTexture = createMAVENTexture();
+const mavenNormalMap = createMAVENNormalMap();
+const mavenRoughnessMap = createMAVENRoughnessMap();
 let spaceObjectMeshesRefs = []; // References to space object meshes for model update
 let spaceProbeMeshesRefs = []; // References to space probe meshes for model update
 
@@ -2154,15 +2324,16 @@ gltfLoader.load(
               const newMaterials = materials.map((material) => {
                 if (material) {
                   return new THREE.MeshStandardMaterial({
-                    map: material.map || null,
-                    normalMap: material.normalMap || null,
-                    roughnessMap: material.roughnessMap || null,
+                    // Use procedural textures for MAVEN
+                    map: mavenTexture,
+                    normalMap: mavenNormalMap,
+                    roughnessMap: mavenRoughnessMap,
                     metalnessMap: material.metalnessMap || null,
                     emissiveMap: material.emissiveMap || null,
-                    // Always use metallic silver color for MAVEN spacecraft, regardless of texture
+                    // Metallic silver base color
                     color: new THREE.Color(0.7, 0.7, 0.75),
-                    roughness: material.roughness !== undefined ? material.roughness : 0.3,
-                    metalness: material.metalness !== undefined ? material.metalness : 0.8,
+                    roughness: 0.3,
+                    metalness: 0.8,
                     emissive: material.emissive ? material.emissive.clone() : new THREE.Color(0, 0, 0),
                     transparent: false,
                     opacity: 1.0,
@@ -2170,8 +2341,11 @@ gltfLoader.load(
                     blending: THREE.NormalBlending
                   });
                 }
-                // Default metallic silver for MAVEN
+                // Default with procedural textures for MAVEN
                 return new THREE.MeshStandardMaterial({ 
+                  map: mavenTexture,
+                  normalMap: mavenNormalMap,
+                  roughnessMap: mavenRoughnessMap,
                   color: new THREE.Color(0.7, 0.7, 0.75),
                   metalness: 0.8,
                   roughness: 0.3
@@ -2183,8 +2357,11 @@ gltfLoader.load(
                 child.material = newMaterials[0];
               }
             } else {
-              // Default metallic silver for MAVEN
+              // Default with procedural textures for MAVEN
               child.material = new THREE.MeshStandardMaterial({ 
+                map: mavenTexture,
+                normalMap: mavenNormalMap,
+                roughnessMap: mavenRoughnessMap,
                 color: new THREE.Color(0.7, 0.7, 0.75),
                 metalness: 0.8,
                 roughness: 0.3
@@ -2223,12 +2400,16 @@ gltfLoader.load(
           clonedScene.position.copy(oldPosition);
           pivot.add(clonedScene);
           
-          // Force update color for all MAVEN materials after adding to scene
+          // Force update textures and color for all MAVEN materials after adding to scene
           clonedScene.traverse((child) => {
             if (child.isMesh && child.material) {
               const materials = Array.isArray(child.material) ? child.material : [child.material];
               materials.forEach((mat) => {
                 if (mat && mat.isMeshStandardMaterial) {
+                  // Apply procedural textures
+                  mat.map = mavenTexture;
+                  mat.normalMap = mavenNormalMap;
+                  mat.roughnessMap = mavenRoughnessMap;
                   mat.color.setRGB(0.7, 0.7, 0.75);
                   mat.metalness = 0.8;
                   mat.roughness = 0.3;
@@ -2521,18 +2702,19 @@ celestialBodies.forEach((body) => {
               const materials = Array.isArray(child.material) ? child.material : [child.material];
               const newMaterials = materials.map((material) => {
                 if (material) {
-                  // Special material for MAVEN - metallic silver
+                  // Special material for MAVEN - with procedural textures
                   if (probeData.name === "MAVEN") {
                     return new THREE.MeshStandardMaterial({
-                      map: material.map || null,
-                      normalMap: material.normalMap || null,
-                      roughnessMap: material.roughnessMap || null,
+                      // Use procedural textures for MAVEN
+                      map: mavenTexture,
+                      normalMap: mavenNormalMap,
+                      roughnessMap: mavenRoughnessMap,
                       metalnessMap: material.metalnessMap || null,
                       emissiveMap: material.emissiveMap || null,
                       // Metallic silver color for MAVEN spacecraft
-                      color: material.map ? (material.color ? material.color.clone() : new THREE.Color(0.7, 0.7, 0.75)) : new THREE.Color(0.7, 0.7, 0.75),
-                      roughness: material.roughness !== undefined ? material.roughness : 0.3,
-                      metalness: material.metalness !== undefined ? material.metalness : 0.8,
+                      color: new THREE.Color(0.7, 0.7, 0.75),
+                      roughness: 0.3,
+                      metalness: 0.8,
                       emissive: material.emissive ? material.emissive.clone() : new THREE.Color(0, 0, 0),
                       transparent: false,
                       opacity: 1.0,
@@ -2560,6 +2742,9 @@ celestialBodies.forEach((body) => {
                 // Default material based on probe type
                 if (probeData.name === "MAVEN") {
                   return new THREE.MeshStandardMaterial({ 
+                    map: mavenTexture,
+                    normalMap: mavenNormalMap,
+                    roughnessMap: mavenRoughnessMap,
                     color: new THREE.Color(0.7, 0.7, 0.75),
                     metalness: 0.8,
                     roughness: 0.3
@@ -2576,6 +2761,9 @@ celestialBodies.forEach((body) => {
               // Default material based on probe type
               if (probeData.name === "MAVEN") {
                 child.material = new THREE.MeshStandardMaterial({ 
+                  map: mavenTexture,
+                  normalMap: mavenNormalMap,
+                  roughnessMap: mavenRoughnessMap,
                   color: new THREE.Color(0.7, 0.7, 0.75),
                   metalness: 0.8,
                   roughness: 0.3
@@ -2597,13 +2785,17 @@ celestialBodies.forEach((body) => {
         const scale = probeData.size / maxDim;
         clonedScene.scale.set(scale, scale, scale);
         
-        // Force update color for MAVEN materials after scaling
+        // Force update textures and color for MAVEN materials after scaling
         if (probeData.name === "MAVEN") {
           clonedScene.traverse((child) => {
             if (child.isMesh && child.material) {
               const materials = Array.isArray(child.material) ? child.material : [child.material];
               materials.forEach((mat) => {
                 if (mat && mat.isMeshStandardMaterial) {
+                  // Apply procedural textures
+                  mat.map = mavenTexture;
+                  mat.normalMap = mavenNormalMap;
+                  mat.roughnessMap = mavenRoughnessMap;
                   mat.color.setRGB(0.7, 0.7, 0.75);
                   mat.metalness = 0.8;
                   mat.roughness = 0.3;
