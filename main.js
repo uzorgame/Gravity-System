@@ -79,7 +79,12 @@ const translations = {
     na: "N/A",
     followMoon: "Follow",
     period: "Period",
-    planetRadii: "planet radii"
+    planetRadii: "planet radii",
+    star: "STAR",
+    sunInfo: "The star at the center of our Solar System. A G-type main-sequence star (G2V) that formed approximately 4.6 billion years ago. Contains 99.86% of the Solar System's mass. Surface temperature: 5,778 K. Core temperature: ~15 million K. Rotates around the galactic center in ~225-250 million years.",
+    sunSizeRelative: "109.2x Earth",
+    sunDistance: "0 AU (Center)",
+    sunOrbitalPeriod: "N/A (Galactic orbit: ~225-250 million years)"
   },
   uk: {
     missionControl: "Керування",
@@ -148,7 +153,12 @@ const translations = {
     na: "Н/Д",
     followMoon: "Відстежити",
     period: "Період",
-    planetRadii: "радіусів планети"
+    planetRadii: "радіусів планети",
+    star: "ЗІРКА",
+    sunInfo: "Зірка в центрі нашої Сонячної системи. Зірка головної послідовності типу G (G2V), що сформувалася приблизно 4,6 мільярда років тому. Містить 99,86% маси Сонячної системи. Температура поверхні: 5,778 K. Температура ядра: ~15 мільйонів K. Обертається навколо галактичного центру за ~225-250 мільйонів років.",
+    sunSizeRelative: "109,2x Землі",
+    sunDistance: "0 АО (Центр)",
+    sunOrbitalPeriod: "Н/Д (Галактична орбіта: ~225-250 мільйонів років)"
   },
   cs: {
     missionControl: "Ovládání",
@@ -217,11 +227,17 @@ const translations = {
     na: "N/A",
     followMoon: "Sledovat",
     period: "Perioda",
-    planetRadii: "poloměrů planety"
+    planetRadii: "poloměrů planety",
+    star: "HVĚZDA",
+    sunInfo: "Hvězda ve středu naší Sluneční soustavy. Hvězda hlavní posloupnosti typu G (G2V), která se zformovala přibližně před 4,6 miliardami let. Obsahuje 99,86% hmotnosti Sluneční soustavy. Teplota povrchu: 5,778 K. Teplota jádra: ~15 milionů K. Obíhá kolem galaktického centra za ~225-250 milionů let.",
+    sunSizeRelative: "109,2x Země",
+    sunDistance: "0 AU (Střed)",
+    sunOrbitalPeriod: "N/A (Galaktická orbita: ~225-250 milionů let)"
   }
 };
 const bodyDescriptions = {
   en: {
+    Sun: "The star at the center of our Solar System. A G-type main-sequence star (G2V) that formed approximately 4.6 billion years ago. Contains 99.86% of the Solar System's mass. Surface temperature: 5,778 K. Core temperature: ~15 million K. Rotates around the galactic center in ~225-250 million years. The Sun's energy, produced through nuclear fusion in its core, sustains all life on Earth and drives the climate and weather systems of all planets in the solar system.",
     Mercury: "Mercury is the closest planet to the Sun and the smallest planet in our solar system, completing an orbit in just 88 Earth days. Despite being closest to the Sun, it experiences extreme temperature variations from -173°C at night to 427°C during the day due to its lack of atmosphere. The planet has a heavily cratered surface similar to Earth's Moon and possesses a large iron core that makes up about 75% of its radius.",
     Venus: "Venus is the hottest planet in our solar system with surface temperatures reaching 462°C, hot enough to melt lead. Its thick, toxic atmosphere consists mainly of carbon dioxide with clouds of sulfuric acid, creating a runaway greenhouse effect. Despite being similar in size to Earth, Venus rotates backwards and has a day longer than its year, making it one of the most inhospitable places in the solar system.",
     Earth: "Earth is the only known planet in the universe to harbor life, with conditions perfectly balanced for complex ecosystems to thrive. Approximately 71% of its surface is covered by oceans, and it has a protective atmosphere rich in nitrogen and oxygen that shields life from harmful solar radiation. Our planet has one natural satellite, the Moon, which influences tides and has been crucial in the development of life on Earth.",
@@ -247,6 +263,7 @@ const bodyDescriptions = {
     "2007 OR10": "2007 OR10, unofficially nicknamed 'Snow White' before receiving its official name, is one of the largest known dwarf planet candidates in the solar system, discovered in 2007 during a survey of the outer solar system. The object has a very red surface color, among the reddest of known trans-Neptunian objects, suggesting it contains significant amounts of organic compounds called tholins or has experienced extensive surface processing. It has one small moon discovered in 2016, which takes approximately 19 days to orbit and has helped scientists determine 2007 OR10's mass and confirm it as one of the largest objects in the scattered disc region."
   },
   uk: {
+    Sun: "Зірка в центрі нашої Сонячної системи. Зірка головної послідовності типу G (G2V), що сформувалася приблизно 4,6 мільярда років тому. Містить 99,86% маси Сонячної системи. Температура поверхні: 5,778 K. Температура ядра: ~15 мільйонів K. Обертається навколо галактичного центру за ~225-250 мільйонів років. Енергія Сонця, що виробляється через ядерний синтез у його ядрі, підтримує все життя на Землі та керує кліматом та погодними системами всіх планет у сонячній системі.",
     Mercury: "Меркурій — найближча до Сонця планета та найменша планета в нашій сонячній системі, яка здійснює оберт навколо Сонця всього за 88 земних днів. Незважаючи на близькість до Сонця, він зазнає екстремальних коливань температури від -173°C вночі до 427°C вдень через відсутність атмосфери. Планета має сильно кратеровану поверхню, подібну до Місяця Землі, та велике залізне ядро, яке становить близько 75% його радіуса.",
     Venus: "Венера — найспекотніша планета в нашій сонячній системі з температурою поверхні до 462°C, достатньою для плавлення свинцю. Її товста, токсична атмосфера складається переважно з діоксиду вуглецю з хмарами сірчаної кислоти, створюючи ефект парникового газу, що розвивається. Незважаючи на подібність за розміром до Землі, Венера обертається в зворотному напрямку і має день довший за рік, що робить її одним з найнепридатніших для життя місць у сонячній системі.",
     Earth: "Земля — єдина відома планета у Всесвіті, де існує життя, з умовами, ідеально збалансованими для процвітання складних екосистем. Приблизно 71% її поверхні покрито океанами, і вона має захисну атмосферу, багату азотом та киснем, яка захищає життя від шкідливого сонячного випромінювання. Наша планета має один природний супутник — Місяць, який впливає на припливи і відливи та був ключовим у розвитку життя на Землі.",
@@ -272,6 +289,7 @@ const bodyDescriptions = {
     "2007 OR10": "2007 OR10, неофіційно прозваний 'Білосніжкою' перед отриманням офіційної назви, є одним з найбільших відомих кандидатів у карликові планети в сонячній системі, відкритий у 2007 році під час огляду зовнішньої сонячної системи. Об'єкт має дуже червоний колір поверхні, один з найчервоніших серед відомих транснептунових об'єктів, що вказує на те, що він містить значні кількості органічних сполук, званих толінами, або зазнав значну обробку поверхні. Він має один малий супутник, відкритий у 2016 році, якому потрібно приблизно 19 днів, щоб обернутися, і який допоміг вченим визначити масу 2007 OR10 та підтвердити його як один з найбільших об'єктів у області розсіяного диска."
   },
   cs: {
+    Sun: "Hvězda ve středu naší Sluneční soustavy. Hvězda hlavní posloupnosti typu G (G2V), která se zformovala přibližně před 4,6 miliardami let. Obsahuje 99,86% hmotnosti Sluneční soustavy. Teplota povrchu: 5,778 K. Teplota jádra: ~15 milionů K. Obíhá kolem galaktického centra za ~225-250 milionů let. Energie Slunce, produkovaná jadernou fúzí v jeho jádru, udržuje veškerý život na Zemi a pohání klimatické a meteorologické systémy všech planet ve sluneční soustavě.",
     Mercury: "Merkur je planeta nejblíže ke Slunci a nejmenší planeta v naší sluneční soustavě, která dokončí oběh za pouhých 88 pozemských dní. Navzdory blízkosti ke Slunci zažívá extrémní teplotní výkyvy od -173°C v noci do 427°C během dne kvůli absenci atmosféry. Planeta má silně kráterovaný povrch podobný Měsíci Země a má velké železné jádro, které tvoří asi 75% jeho poloměru.",
     Venus: "Venuše je nejteplejší planeta v naší sluneční soustavě s povrchovými teplotami dosahujícími 462°C, dostatečně horká na roztavení olova. Její hustá, toxická atmosféra se skládá převážně z oxidu uhličitého s mraky kyseliny sírové, což vytváří nekontrolovatelný skleníkový efekt. Navzdory podobné velikosti se Zemí se Venuše otáčí pozpátku a má den delší než rok, což z ní činí jedno z nejnepřátelštějších míst ve sluneční soustavě.",
     Earth: "Země je jediná známá planeta ve vesmíru, která hostí život, s podmínkami dokonale vyváženými pro prosperitu složitých ekosystémů. Přibližně 71% jejího povrchu je pokryto oceány a má ochrannou atmosféru bohatou na dusík a kyslík, která chrání život před škodlivým slunečním zářením. Naše planeta má jeden přirozený satelit, Měsíc, který ovlivňuje příliv a odliv a byl klíčový pro vývoj života na Zemi.",
@@ -1263,6 +1281,23 @@ createScatteredDisk();
 createOortCloud();
 const celestialBodies = [
   {
+    name: "Sun",
+    size: 5,
+    dist: 0,
+    speed: 0,
+    initialAngle: 0,
+    texture: "sun.jpg",
+    roughness: 0.0,
+    metalness: 0.0,
+    type: "star",
+    info: "The star at the center of our Solar System. A G-type main-sequence star (G2V) that formed approximately 4.6 billion years ago. Contains 99.86% of the Solar System's mass. Surface temperature: 5,778 K. Core temperature: ~15 million K. Rotates around the galactic center in ~225-250 million years.",
+    discoveryYear: "Ancient",
+    realAU: 0,
+    orbitalPeriodDays: null,
+    sizeRelativeEarth: 109.2,
+    moons: []
+  },
+  {
     name: "Mercury",
     size: 0.5,
     dist: 8,
@@ -1887,6 +1922,24 @@ gltfLoader.load(
 
 const planetMeshes = [];
 celestialBodies.forEach((body) => {
+  // Skip Sun as it's already created separately
+  if (body.name === "Sun") {
+    // Use existing sun mesh
+    const pivot = new THREE.Object3D();
+    pivot.add(sun);
+    scene.add(pivot);
+    planetMeshes.push({
+      mesh: sun,
+      pivot: pivot,
+      speed: body.speed,
+      moons: [],
+      type: body.type,
+      orbit: null,
+      body: body
+    });
+    return;
+  }
+  
   let material;
   if (body.texture) {
     const texturePath = `${BASE_URL}textures/${body.texture}`;
@@ -1916,6 +1969,13 @@ celestialBodies.forEach((body) => {
     pivot.rotation.y = body.initialAngle;
   }
   scene.add(pivot);
+  
+  // Skip orbit creation for stars
+  if (body.type === 'star') {
+    planetMeshes.push({ mesh: mesh, pivot: pivot, body: body });
+    return;
+  }
+  
   const orbitGeo = new THREE.RingGeometry(
     body.dist - 0.05,
     body.dist + 0.05,
@@ -2734,9 +2794,15 @@ const planetList = document.getElementById('planetList');
       planetItem.className = `planet-item ${body.type}`;
       const moonText = body.moons && body.moons.length > 0 ? 
         `<br><small>${t('moonsLabel')} ${body.moons.length}</small>` : '';
+      const sizeText = body.sizeRelativeEarth ? 
+        `${t('size')} ${body.sizeRelativeEarth}x ${t('earth')}` : 
+        `${t('size')} ${body.size}`;
+      const distanceText = body.dist === 0 ? 
+        t('sunDistance') : 
+        `${t('distance')} ${body.dist} ${t('au')}`;
       planetItem.innerHTML = `
         <strong>${body.name}</strong>
-        <br><small>${t('distance')} ${body.dist} ${t('au')} | ${t('size')} ${body.size}</small>
+        <br><small>${distanceText} | ${sizeText}</small>
         <br><small>${t('discovered')} ${body.discoveryYear}</small>
         ${moonText}
       `;
@@ -2785,29 +2851,44 @@ function showPlanetInfoCard(body, planetIndex) {
   };
   planetTypeBadge.textContent = typeLabels[body.type] || t('celestialBody');
   
-  // Use real orbital period if available, otherwise calculate from realAU, otherwise fallback to old formula
-  let orbitalPeriodYears;
-  if (body.orbitalPeriodDays !== undefined) {
-    orbitalPeriodYears = body.orbitalPeriodDays / 365.256;
-  } else if (body.realAU !== undefined) {
-    orbitalPeriodYears = Math.sqrt(Math.pow(body.realAU, 3));
+  // Handle orbital period
+  if (body.type === 'star') {
+    orbitalPeriod.textContent = t('sunOrbitalPeriod');
   } else {
-    orbitalPeriodYears = Math.sqrt(Math.pow(body.dist, 3));
+    // Use real orbital period if available, otherwise calculate from realAU, otherwise fallback to old formula
+    let orbitalPeriodYears;
+    if (body.orbitalPeriodDays !== undefined) {
+      orbitalPeriodYears = body.orbitalPeriodDays / 365.256;
+    } else if (body.realAU !== undefined) {
+      orbitalPeriodYears = Math.sqrt(Math.pow(body.realAU, 3));
+    } else {
+      orbitalPeriodYears = Math.sqrt(Math.pow(body.dist, 3));
+    }
+    
+    if (orbitalPeriodYears < 1) {
+      orbitalPeriod.textContent = `${Math.round(orbitalPeriodYears * 365.256)} ${t('days')}`;
+    } else if (orbitalPeriodYears < 10) {
+      orbitalPeriod.textContent = `${orbitalPeriodYears.toFixed(1)} ${t('years')}`;
+    } else {
+      orbitalPeriod.textContent = `${Math.round(orbitalPeriodYears)} ${t('years')}`;
+    }
   }
   
-  if (orbitalPeriodYears < 1) {
-    orbitalPeriod.textContent = `${Math.round(orbitalPeriodYears * 365.256)} ${t('days')}`;
-  } else if (orbitalPeriodYears < 10) {
-    orbitalPeriod.textContent = `${orbitalPeriodYears.toFixed(1)} ${t('years')}`;
+  // Handle size relative to Earth
+  if (body.sizeRelativeEarth !== undefined) {
+    sizeRelative.textContent = t('sunSizeRelative');
   } else {
-    orbitalPeriod.textContent = `${Math.round(orbitalPeriodYears)} ${t('years')}`;
+    sizeRelative.textContent = `${body.size}x ${t('earth')}`;
   }
   
-  sizeRelative.textContent = `${body.size}x ${t('earth')}`;
-  
-  // Use realAU if available, otherwise use dist
-  const displayDistance = body.realAU !== undefined ? body.realAU : body.dist;
-  distanceFromSun.textContent = `${displayDistance.toFixed(2)} ${t('au')}`;
+  // Handle distance from Sun
+  if (body.type === 'star') {
+    distanceFromSun.textContent = t('sunDistance');
+  } else {
+    // Use realAU if available, otherwise use dist
+    const displayDistance = body.realAU !== undefined ? body.realAU : body.dist;
+    distanceFromSun.textContent = `${displayDistance.toFixed(2)} ${t('au')}`;
+  }
   discoveryYear.textContent = body.discoveryYear === 'Ancient' ? t('ancient') : 
                                body.discoveryYear === 'N/A' ? t('na') : body.discoveryYear;
   const translatedInfo = getBodyInfo(body.name);
