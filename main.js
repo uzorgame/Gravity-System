@@ -2159,8 +2159,8 @@ gltfLoader.load(
                     roughnessMap: material.roughnessMap || null,
                     metalnessMap: material.metalnessMap || null,
                     emissiveMap: material.emissiveMap || null,
-                    // Metallic silver color for MAVEN spacecraft
-                    color: material.map ? (material.color ? material.color.clone() : new THREE.Color(0.7, 0.7, 0.75)) : new THREE.Color(0.7, 0.7, 0.75),
+                    // Always use metallic silver color for MAVEN spacecraft, regardless of texture
+                    color: new THREE.Color(0.7, 0.7, 0.75),
                     roughness: material.roughness !== undefined ? material.roughness : 0.3,
                     metalness: material.metalness !== undefined ? material.metalness : 0.8,
                     emissive: material.emissive ? material.emissive.clone() : new THREE.Color(0, 0, 0),
@@ -2222,6 +2222,21 @@ gltfLoader.load(
           
           clonedScene.position.copy(oldPosition);
           pivot.add(clonedScene);
+          
+          // Force update color for all MAVEN materials after adding to scene
+          clonedScene.traverse((child) => {
+            if (child.isMesh && child.material) {
+              const materials = Array.isArray(child.material) ? child.material : [child.material];
+              materials.forEach((mat) => {
+                if (mat && mat.isMeshStandardMaterial) {
+                  mat.color.setRGB(0.7, 0.7, 0.75);
+                  mat.metalness = 0.8;
+                  mat.roughness = 0.3;
+                  mat.needsUpdate = true;
+                }
+              });
+            }
+          });
           
           // Update references
           ref.mesh = clonedScene;
@@ -2581,6 +2596,24 @@ celestialBodies.forEach((body) => {
         const maxDim = Math.max(size.x, size.y, size.z);
         const scale = probeData.size / maxDim;
         clonedScene.scale.set(scale, scale, scale);
+        
+        // Force update color for MAVEN materials after scaling
+        if (probeData.name === "MAVEN") {
+          clonedScene.traverse((child) => {
+            if (child.isMesh && child.material) {
+              const materials = Array.isArray(child.material) ? child.material : [child.material];
+              materials.forEach((mat) => {
+                if (mat && mat.isMeshStandardMaterial) {
+                  mat.color.setRGB(0.7, 0.7, 0.75);
+                  mat.metalness = 0.8;
+                  mat.roughness = 0.3;
+                  mat.needsUpdate = true;
+                }
+              });
+            }
+          });
+        }
+        
         probeMesh = clonedScene;
       } else {
         // Fallback to sphere
