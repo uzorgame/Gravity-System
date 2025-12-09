@@ -1912,73 +1912,115 @@ let junoGLTFModel = null;
 // Create procedural texture for MAVEN spacecraft
 function createMAVENTexture() {
   const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 1024;
+  canvas.width = 2048;
+  canvas.height = 2048;
   const ctx = canvas.getContext('2d');
   
-  // Base metallic silver color
-  const baseColor = { r: 180, g: 180, b: 190 };
+  // Base metallic silver color - brighter and more vibrant
+  const baseColor = { r: 200, g: 205, b: 215 };
   
   // Fill with base color
   ctx.fillStyle = `rgb(${baseColor.r}, ${baseColor.g}, ${baseColor.b})`;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
-  // Add panel variations (solar panels, body panels)
-  for (let i = 0; i < 20; i++) {
-    const x = Math.random() * canvas.width;
-    const y = Math.random() * canvas.height;
-    const width = 50 + Math.random() * 150;
-    const height = 50 + Math.random() * 150;
-    
-    // Slightly different shades for panels
-    const variation = 10 + Math.random() * 15;
-    const panelColor = {
-      r: Math.max(0, Math.min(255, baseColor.r + (Math.random() > 0.5 ? variation : -variation))),
-      g: Math.max(0, Math.min(255, baseColor.g + (Math.random() > 0.5 ? variation : -variation))),
-      b: Math.max(0, Math.min(255, baseColor.b + (Math.random() > 0.5 ? variation : -variation)))
-    };
-    
-    ctx.fillStyle = `rgb(${panelColor.r}, ${panelColor.g}, ${panelColor.b})`;
-    ctx.fillRect(x, y, width, height);
+  // Create structured panel pattern (like real spacecraft)
+  const panelSize = 200;
+  for (let y = 0; y < canvas.height; y += panelSize) {
+    for (let x = 0; x < canvas.width; x += panelSize) {
+      // Vary panel colors more significantly
+      const variation = 15 + Math.random() * 25;
+      const panelColor = {
+        r: Math.max(160, Math.min(240, baseColor.r + (Math.random() > 0.5 ? variation : -variation))),
+        g: Math.max(165, Math.min(240, baseColor.g + (Math.random() > 0.5 ? variation : -variation))),
+        b: Math.max(180, Math.min(240, baseColor.b + (Math.random() > 0.5 ? variation : -variation)))
+      };
+      
+      ctx.fillStyle = `rgb(${panelColor.r}, ${panelColor.g}, ${panelColor.b})`;
+      ctx.fillRect(x, y, panelSize - 2, panelSize - 2);
+      
+      // Add panel borders
+      ctx.strokeStyle = `rgb(${panelColor.r - 25}, ${panelColor.g - 25}, ${panelColor.b - 25})`;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, panelSize - 2, panelSize - 2);
+    }
   }
   
-  // Add seams and lines (structural details)
-  ctx.strokeStyle = `rgb(${baseColor.r - 20}, ${baseColor.g - 20}, ${baseColor.b - 20})`;
-  ctx.lineWidth = 2;
-  for (let i = 0; i < 15; i++) {
+  // Add solar panel areas (darker blue-gray)
+  for (let i = 0; i < 8; i++) {
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height;
+    const width = 150 + Math.random() * 200;
+    const height = 80 + Math.random() * 120;
+    
+    ctx.fillStyle = `rgb(${baseColor.r - 40}, ${baseColor.g - 35}, ${baseColor.b - 20})`;
+    ctx.fillRect(x, y, width, height);
+    
+    // Add solar cell grid pattern
+    ctx.strokeStyle = `rgb(${baseColor.r - 60}, ${baseColor.g - 55}, ${baseColor.b - 40})`;
+    ctx.lineWidth = 1;
+    const cellSize = 20;
+    for (let cy = y; cy < y + height; cy += cellSize) {
+      ctx.beginPath();
+      ctx.moveTo(x, cy);
+      ctx.lineTo(x + width, cy);
+      ctx.stroke();
+    }
+    for (let cx = x; cx < x + width; cx += cellSize) {
+      ctx.beginPath();
+      ctx.moveTo(cx, y);
+      ctx.lineTo(cx, y + height);
+      ctx.stroke();
+    }
+  }
+  
+  // Add structural seams (darker lines)
+  ctx.strokeStyle = `rgb(${baseColor.r - 50}, ${baseColor.g - 50}, ${baseColor.b - 50})`;
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 30; i++) {
     ctx.beginPath();
     const x1 = Math.random() * canvas.width;
     const y1 = Math.random() * canvas.height;
-    const x2 = x1 + (Math.random() - 0.5) * 200;
-    const y2 = y1 + (Math.random() - 0.5) * 200;
+    const length = 100 + Math.random() * 300;
+    const angle = Math.random() * Math.PI * 2;
+    const x2 = x1 + Math.cos(angle) * length;
+    const y2 = y1 + Math.sin(angle) * length;
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
     ctx.stroke();
   }
   
-  // Add small details (screws, connectors)
-  ctx.fillStyle = `rgb(${baseColor.r - 30}, ${baseColor.g - 30}, ${baseColor.b - 30})`;
-  for (let i = 0; i < 50; i++) {
+  // Add hardware details (screws, bolts, connectors) - darker
+  ctx.fillStyle = `rgb(${baseColor.r - 60}, ${baseColor.g - 60}, ${baseColor.b - 60})`;
+  for (let i = 0; i < 100; i++) {
     const x = Math.random() * canvas.width;
     const y = Math.random() * canvas.height;
+    const size = 3 + Math.random() * 4;
     ctx.beginPath();
-    ctx.arc(x, y, 2 + Math.random() * 3, 0, Math.PI * 2);
+    ctx.arc(x, y, size, 0, Math.PI * 2);
     ctx.fill();
+    
+    // Add highlight to screws
+    ctx.fillStyle = `rgb(${baseColor.r - 30}, ${baseColor.g - 30}, ${baseColor.b - 30})`;
+    ctx.beginPath();
+    ctx.arc(x - size * 0.3, y - size * 0.3, size * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = `rgb(${baseColor.r - 60}, ${baseColor.g - 60}, ${baseColor.b - 60})`;
   }
   
-  // Add highlights (metallic reflections)
-  const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-  gradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
-  gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
-  gradient.addColorStop(1, 'rgba(200, 200, 220, 0.15)');
-  ctx.fillStyle = gradient;
+  // Add metallic highlights (brighter areas)
+  const highlightGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
+  highlightGradient.addColorStop(0.3, 'rgba(240, 245, 255, 0.15)');
+  highlightGradient.addColorStop(0.7, 'rgba(220, 225, 235, 0.1)');
+  highlightGradient.addColorStop(1, 'rgba(200, 210, 220, 0.15)');
+  ctx.fillStyle = highlightGradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
-  // Add noise for texture detail
+  // Add subtle noise for realistic surface texture
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
   for (let i = 0; i < data.length; i += 4) {
-    const noise = (Math.random() - 0.5) * 8;
+    const noise = (Math.random() - 0.5) * 12;
     data[i] = Math.max(0, Math.min(255, data[i] + noise));     // R
     data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise)); // G
     data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + noise)); // B
@@ -1994,40 +2036,45 @@ function createMAVENTexture() {
   return texture;
 }
 
-// Create normal map for MAVEN (surface details)
+// Create normal map for MAVEN (surface details) - proper format
 function createMAVENNormalMap() {
   const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 1024;
+  canvas.width = 2048;
+  canvas.height = 2048;
   const ctx = canvas.getContext('2d');
   
-  // Base normal color (flat surface)
+  // Base normal color (flat surface pointing up) - RGB format: (128, 128, 255)
   ctx.fillStyle = 'rgb(128, 128, 255)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
-  // Add surface details (panels, seams)
-  ctx.strokeStyle = 'rgb(100, 100, 255)';
-  ctx.lineWidth = 3;
-  for (let i = 0; i < 10; i++) {
+  // Add subtle panel grooves (slightly recessed)
+  ctx.strokeStyle = 'rgb(110, 110, 250)';
+  ctx.lineWidth = 2;
+  const panelSize = 200;
+  for (let y = 0; y < canvas.height; y += panelSize) {
     ctx.beginPath();
-    const x1 = Math.random() * canvas.width;
-    const y1 = Math.random() * canvas.height;
-    const x2 = x1 + (Math.random() - 0.5) * 200;
-    const y2 = y1 + (Math.random() - 0.5) * 200;
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvas.width, y);
+    ctx.stroke();
+  }
+  for (let x = 0; x < canvas.width; x += panelSize) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, canvas.height);
     ctx.stroke();
   }
   
-  // Add small bumps
-  ctx.fillStyle = 'rgb(150, 150, 255)';
-  for (let i = 0; i < 30; i++) {
-    const x = Math.random() * canvas.width;
-    const y = Math.random() * canvas.height;
-    ctx.beginPath();
-    ctx.arc(x, y, 3 + Math.random() * 5, 0, Math.PI * 2);
-    ctx.fill();
+  // Add very subtle surface variation (almost flat)
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    // Keep normal map subtle - only small variations
+    const noise = (Math.random() - 0.5) * 5;
+    data[i] = Math.max(120, Math.min(135, data[i] + noise));     // R
+    data[i + 1] = Math.max(120, Math.min(135, data[i + 1] + noise)); // G
+    data[i + 2] = Math.max(250, Math.min(255, data[i + 2])); // B (always high for up direction)
   }
+  ctx.putImageData(imageData, 0, 0);
   
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
@@ -2327,13 +2374,14 @@ gltfLoader.load(
                     // Use procedural textures for MAVEN
                     map: mavenTexture,
                     normalMap: mavenNormalMap,
+                    normalScale: new THREE.Vector2(0.5, 0.5), // Reduce normal map intensity
                     roughnessMap: mavenRoughnessMap,
                     metalnessMap: material.metalnessMap || null,
                     emissiveMap: material.emissiveMap || null,
-                    // Metallic silver base color
-                    color: new THREE.Color(0.7, 0.7, 0.75),
-                    roughness: 0.3,
-                    metalness: 0.8,
+                    // Brighter metallic silver base color
+                    color: new THREE.Color(0.85, 0.87, 0.9),
+                    roughness: 0.25,
+                    metalness: 0.85,
                     emissive: material.emissive ? material.emissive.clone() : new THREE.Color(0, 0, 0),
                     transparent: false,
                     opacity: 1.0,
@@ -2345,10 +2393,11 @@ gltfLoader.load(
                 return new THREE.MeshStandardMaterial({ 
                   map: mavenTexture,
                   normalMap: mavenNormalMap,
+                  normalScale: new THREE.Vector2(0.5, 0.5), // Reduce normal map intensity
                   roughnessMap: mavenRoughnessMap,
-                  color: new THREE.Color(0.7, 0.7, 0.75),
-                  metalness: 0.8,
-                  roughness: 0.3
+                  color: new THREE.Color(0.85, 0.87, 0.9),
+                  metalness: 0.85,
+                  roughness: 0.25
                 });
               });
               if (Array.isArray(child.material)) {
@@ -2361,10 +2410,11 @@ gltfLoader.load(
               child.material = new THREE.MeshStandardMaterial({ 
                 map: mavenTexture,
                 normalMap: mavenNormalMap,
+                normalScale: new THREE.Vector2(0.5, 0.5),
                 roughnessMap: mavenRoughnessMap,
-                color: new THREE.Color(0.7, 0.7, 0.75),
-                metalness: 0.8,
-                roughness: 0.3
+                color: new THREE.Color(0.85, 0.87, 0.9),
+                metalness: 0.85,
+                roughness: 0.25
               });
             }
             child.castShadow = true;
@@ -2409,10 +2459,11 @@ gltfLoader.load(
                   // Apply procedural textures
                   mat.map = mavenTexture;
                   mat.normalMap = mavenNormalMap;
+                  mat.normalScale = new THREE.Vector2(0.5, 0.5);
                   mat.roughnessMap = mavenRoughnessMap;
-                  mat.color.setRGB(0.7, 0.7, 0.75);
-                  mat.metalness = 0.8;
-                  mat.roughness = 0.3;
+                  mat.color.setRGB(0.85, 0.87, 0.9);
+                  mat.metalness = 0.85;
+                  mat.roughness = 0.25;
                   mat.needsUpdate = true;
                 }
               });
@@ -2708,13 +2759,14 @@ celestialBodies.forEach((body) => {
                       // Use procedural textures for MAVEN
                       map: mavenTexture,
                       normalMap: mavenNormalMap,
+                      normalScale: new THREE.Vector2(0.5, 0.5),
                       roughnessMap: mavenRoughnessMap,
                       metalnessMap: material.metalnessMap || null,
                       emissiveMap: material.emissiveMap || null,
-                      // Metallic silver color for MAVEN spacecraft
-                      color: new THREE.Color(0.7, 0.7, 0.75),
-                      roughness: 0.3,
-                      metalness: 0.8,
+                      // Brighter metallic silver color for MAVEN spacecraft
+                      color: new THREE.Color(0.85, 0.87, 0.9),
+                      roughness: 0.25,
+                      metalness: 0.85,
                       emissive: material.emissive ? material.emissive.clone() : new THREE.Color(0, 0, 0),
                       transparent: false,
                       opacity: 1.0,
@@ -2795,10 +2847,11 @@ celestialBodies.forEach((body) => {
                   // Apply procedural textures
                   mat.map = mavenTexture;
                   mat.normalMap = mavenNormalMap;
+                  mat.normalScale = new THREE.Vector2(0.5, 0.5);
                   mat.roughnessMap = mavenRoughnessMap;
-                  mat.color.setRGB(0.7, 0.7, 0.75);
-                  mat.metalness = 0.8;
-                  mat.roughness = 0.3;
+                  mat.color.setRGB(0.85, 0.87, 0.9);
+                  mat.metalness = 0.85;
+                  mat.roughness = 0.25;
                   mat.needsUpdate = true;
                 }
               });
