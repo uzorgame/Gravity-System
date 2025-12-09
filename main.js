@@ -573,9 +573,52 @@ controls.dampingFactor = 0.08;
 controls.rotateSpeed = 0.3;
 controls.zoomSpeed = 0.8;
 controls.panSpeed = 0.5;
-const loader = new THREE.TextureLoader();
-loader.manager.onLoad = () => console.log("All textures loaded!");
-loader.manager.onError = (url) => console.error("Error loading texture:", url);
+
+// Create unified loading manager for all resources
+const loadingManager = new THREE.LoadingManager();
+let totalItems = 0;
+let loadedItems = 0;
+
+// Update loading progress
+loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
+  loadedItems = itemsLoaded;
+  totalItems = itemsTotal;
+  const percentage = Math.round((itemsLoaded / itemsTotal) * 100);
+  
+  const loadingPercentage = document.getElementById('loadingPercentage');
+  const loadingBar = document.getElementById('loadingBar');
+  
+  if (loadingPercentage) {
+    loadingPercentage.textContent = percentage + '%';
+  }
+  if (loadingBar) {
+    loadingBar.style.width = percentage + '%';
+  }
+};
+
+// Hide loading screen when all resources are loaded
+loadingManager.onLoad = () => {
+  console.log("All resources loaded!");
+  // Wait a bit to ensure everything is ready, then hide loading screen
+  setTimeout(() => {
+    const loadingScreen = document.getElementById('loadingScreen');
+    if (loadingScreen) {
+      loadingScreen.classList.add('hidden');
+      // Remove from DOM after animation completes
+      setTimeout(() => {
+        if (loadingScreen.parentNode) {
+          loadingScreen.parentNode.removeChild(loadingScreen);
+        }
+      }, 500);
+    }
+  }, 300);
+};
+
+loadingManager.onError = (url) => {
+  console.error("Error loading resource:", url);
+};
+
+const loader = new THREE.TextureLoader(loadingManager);
 const ambientLight = new THREE.AmbientLight(new THREE.Color(0.13, 0.13, 0.13), 0.5);
 scene.add(ambientLight);
 const pointLight = new THREE.PointLight(new THREE.Color(1.0, 1.0, 1.0), 10.0, 1000, 0.5);
@@ -594,7 +637,7 @@ const sunMaterial = new THREE.MeshBasicMaterial({
 });
 const sun = new THREE.Mesh(new THREE.SphereGeometry(5, 64, 64), sunMaterial);
 scene.add(sun);
-const textureLoader = new THREE.TextureLoader();
+const textureLoader = new THREE.TextureLoader(loadingManager);
 const textureFlare0 = textureLoader.load(`${BASE_URL}textures/lensflare0.png`);
 const textureFlare2 = textureLoader.load(`${BASE_URL}textures/lensflare2.png`);
 const lensflare = new Lensflare();
@@ -1656,7 +1699,7 @@ const celestialBodies = [
   }
 ];
 // Load STL model for Moon
-const stlLoader = new STLLoader();
+const stlLoader = new STLLoader(loadingManager);
 let moonSTLGeometry = null;
 let moonMeshRef = null; // Reference to moon mesh for geometry update
 
@@ -1692,9 +1735,9 @@ stlLoader.load(
 );
 
 // Load GLB model for EMU spacesuits
-const dracoLoader = new DRACOLoader();
+const dracoLoader = new DRACOLoader(loadingManager);
 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
-const gltfLoader = new GLTFLoader();
+const gltfLoader = new GLTFLoader(loadingManager);
 gltfLoader.setDRACOLoader(dracoLoader);
 let emuGLTFModel = null;
 let spaceObjectMeshesRefs = []; // References to space object meshes for model update
