@@ -3078,59 +3078,6 @@ function animate() {
             // Calculate new position on elliptical orbit
             const pos = calculateEllipticalOrbit(probe.orbit, probe.meanAnomaly);
             probe.mesh.position.set(pos.x, pos.y, pos.z);
-            
-            // Make MAVEN and JUNO face their planets
-            if (probe.name === "MAVEN" || probe.name === "JUNO") {
-              // Get planet's world position
-              const planetWorldPos = new THREE.Vector3();
-              p.mesh.getWorldPosition(planetWorldPos);
-              
-              // Get probe's world position
-              const probeWorldPos = new THREE.Vector3();
-              probe.pivot.getWorldPosition(probeWorldPos);
-              
-              // Calculate direction from probe to planet
-              const directionToPlanet = new THREE.Vector3().subVectors(planetWorldPos, probeWorldPos).normalize();
-              
-              // Calculate rotation to face the planet
-              // Model faces forward along X axis initially
-              const forward = new THREE.Vector3(1, 0, 0);
-              const quaternion = new THREE.Quaternion().setFromUnitVectors(forward, directionToPlanet);
-              
-              // Apply additional rotation if needed (similar to OREST/EMMA)
-              // Adjust based on model orientation - try different angles
-              const additionalRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -90 * Math.PI / 180);
-              quaternion.multiply(additionalRotation);
-              
-              // Apply rotation to the mesh using lookAt method as well
-              if (probe.mesh) {
-                // Use lookAt for more reliable rotation
-                probe.mesh.lookAt(planetWorldPos);
-                
-                // Also apply quaternion rotation
-                if (probe.mesh.quaternion) {
-                  probe.mesh.quaternion.copy(quaternion);
-                }
-                
-                // If it's a Group/Object3D, apply to the group itself
-                if (probe.mesh.isGroup || probe.mesh.type === 'Group' || probe.mesh.type === 'Object3D') {
-                  probe.mesh.quaternion.copy(quaternion);
-                  probe.mesh.lookAt(planetWorldPos);
-                }
-                
-                // Also apply to all children if they exist
-                if (probe.mesh.children && probe.mesh.children.length > 0) {
-                  probe.mesh.children.forEach(child => {
-                    if (child.lookAt) {
-                      child.lookAt(planetWorldPos);
-                    }
-                    if (child.quaternion !== undefined) {
-                      child.quaternion.copy(quaternion);
-                    }
-                  });
-                }
-              }
-            }
           }
         });
       }
@@ -4194,8 +4141,8 @@ function followSpaceProbe(probeMesh, probeData, parentPlanetName) {
   lastPlanetPosition.set(0, 0, 0);
   userCameraOffset.set(0, 0, 0);
   controls.enableZoom = true;
-  // Allow much closer zoom for space probes (0.5 instead of distance * 0.1)
-  controls.minDistance = 0.5;
+  // Allow much closer zoom for space probes (0.35 = 30% closer than 0.5)
+  controls.minDistance = 0.35;
   controls.maxDistance = distance * 4;
   const stopFollowBtn = document.getElementById('stopFollowBtn');
   if (stopFollowBtn) {
