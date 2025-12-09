@@ -3032,6 +3032,24 @@ celestialBodies.forEach((body) => {
             metalness: 0.1
           });
         }
+      } else if (body.name === "Saturn" && moonData.name === "Titan") {
+        // Load texture for Saturn's moon Titan
+        const moonTexture = loader.load(`${BASE_URL}textures/Saturn - Titan.jpg`);
+        moonMat = new THREE.MeshStandardMaterial({
+          map: moonTexture,
+          color: moonData.color, // Keep color as fallback/overlay
+          roughness: 0.9,
+          metalness: 0.1
+        });
+      } else if (body.name === "Pluto" && moonData.name === "Charon") {
+        // Load texture for Pluto's moon Charon
+        const moonTexture = loader.load(`${BASE_URL}textures/Pluto - Charon.jpg`);
+        moonMat = new THREE.MeshStandardMaterial({
+          map: moonTexture,
+          color: moonData.color, // Keep color as fallback/overlay
+          roughness: 0.9,
+          metalness: 0.1
+        });
       } else {
         moonMat = new THREE.MeshStandardMaterial({
           color: moonData.color,
