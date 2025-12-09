@@ -2784,11 +2784,11 @@ const planetList = document.getElementById('planetList');
     tno: celestialBodies.filter(b => b.type === 'tno')
   };
   const typeLabels = {
-    star: `${t('star')}S`,
-    planet: `${t('planet')}S`,
-    dwarf: `${t('dwarfPlanet')}S`, 
-    asteroid: `MAJOR ${t('asteroid')}S`,
-    tno: `${t('tno')}`
+    star: t('star'),
+    planet: t('planet'),
+    dwarf: t('dwarfPlanet'), 
+    asteroid: `MAJOR ${t('asteroid')}`,
+    tno: t('tno')
   };
   Object.entries(groupedBodies).forEach(([type, bodies]) => {
     if (bodies.length === 0) return;
@@ -2805,15 +2805,18 @@ const planetList = document.getElementById('planetList');
       const sizeText = body.sizeRelativeEarth ? 
         `${t('size')} ${body.sizeRelativeEarth}x ${t('earth')}` : 
         `${t('size')} ${body.size}`;
-      const distanceText = body.dist === 0 ? 
-        t('sunDistance') : 
-        `${t('distance')} ${body.dist} ${t('au')}`;
-      planetItem.innerHTML = `
-        <strong>${body.name}</strong>
-        <br><small>${distanceText} | ${sizeText}</small>
-        <br><small>${t('discovered')} ${body.discoveryYear}</small>
-        ${moonText}
-      `;
+      
+      // For stars, don't show distance and discovery year
+      let planetItemHTML = `<strong>${body.name}</strong>`;
+      if (body.type === 'star') {
+        planetItemHTML += `<br><small>${sizeText}</small>`;
+      } else {
+        const distanceText = `${t('distance')} ${body.dist} ${t('au')}`;
+        planetItemHTML += `<br><small>${distanceText} | ${sizeText}</small>`;
+        planetItemHTML += `<br><small>${t('discovered')} ${body.discoveryYear}</small>`;
+      }
+      planetItemHTML += moonText;
+      planetItem.innerHTML = planetItemHTML;
       planetItem.addEventListener('click', () => {
         showPlanetInfoCard(body, globalIndex);
         const planet = planetMeshes[globalIndex];
