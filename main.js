@@ -1469,7 +1469,7 @@ const celestialBodies = [
       {
         name: "MAVEN",
         modelPath: "Mars Atmosphere and Volatile EvolutioN (MAVEN) (A).glb",
-        size: 0.02,
+        size: 0.05775,
         // Elliptical orbit parameters (semi-major axis in planet radii, eccentricity, inclination, etc.)
         orbit: {
           semiMajorAxis: 1.5, // Average distance in planet radii
@@ -1534,7 +1534,7 @@ const celestialBodies = [
       {
         name: "Juno",
         modelPath: "Juno.glb",
-        size: 0.03,
+        size: 0.05775,
         // Elliptical orbit parameters
         orbit: {
           semiMajorAxis: 3.5, // Average distance in planet radii (increased to avoid collision with planet)
