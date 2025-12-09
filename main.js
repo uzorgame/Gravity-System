@@ -66,9 +66,14 @@ const translations = {
     slow: "Slow",
     fast: "Fast",
     days: "days",
+    hours: "hours",
     years: "years",
     year: "year",
+    orbiting: "Orbiting",
     moonsLabel: "Moons:",
+    spaceProbes: "Space Probes",
+    spaceProbesLabel: "Space Probes:",
+    followSpaceProbe: "Follow",
     distance: "Distance:",
     size: "Size:",
     discovered: "Discovered:",
@@ -142,9 +147,14 @@ const translations = {
     slow: "Повільно",
     fast: "Швидко",
     days: "днів",
+    hours: "годин",
     years: "років",
     year: "рік",
+    orbiting: "Обертається навколо",
     moonsLabel: "Супутники:",
+    spaceProbes: "Космічні апарати",
+    spaceProbesLabel: "Космічні апарати:",
+    followSpaceProbe: "Відстежити",
     distance: "Відстань:",
     size: "Розмір:",
     discovered: "Відкрито:",
@@ -218,9 +228,14 @@ const translations = {
     slow: "Pomalu",
     fast: "Rychle",
     days: "dní",
+    hours: "hodin",
     years: "let",
     year: "rok",
+    orbiting: "Obíhá kolem",
     moonsLabel: "Měsíce:",
+    spaceProbes: "Kosmické sondy",
+    spaceProbesLabel: "Kosmické sondy:",
+    followSpaceProbe: "Sledovat",
     distance: "Vzdálenost:",
     size: "Velikost:",
     discovered: "Objeveno:",
@@ -3092,6 +3107,53 @@ const planetList = document.getElementById('planetList');
       planetList.appendChild(planetItem);
     });
   });
+  
+  // Add space probes to the list
+  const spaceProbesList = [];
+  planetMeshes.forEach((planetObj, planetIndex) => {
+    if (planetObj.spaceProbes && planetObj.spaceProbes.length > 0) {
+      const body = celestialBodies[planetIndex];
+      planetObj.spaceProbes.forEach((probe) => {
+        spaceProbesList.push({
+          probe: probe,
+          planetIndex: planetIndex,
+          planetName: body.name,
+          body: body
+        });
+      });
+    }
+  });
+  
+  if (spaceProbesList.length > 0) {
+    const categoryHeader = document.createElement('div');
+    categoryHeader.className = 'category-header';
+    categoryHeader.innerHTML = `<strong>${t('spaceProbes')}</strong>`;
+    planetList.appendChild(categoryHeader);
+    
+    spaceProbesList.forEach((item) => {
+      const probeItem = document.createElement('div');
+      probeItem.className = 'planet-item space-probe';
+      const orbitalPeriod = item.probe.orbit.orbitalPeriod;
+      const periodText = orbitalPeriod < 1 ? `${(orbitalPeriod * 24).toFixed(1)} ${t('hours') || 'hours'}` : `${orbitalPeriod.toFixed(1)} ${t('days')}`;
+      probeItem.innerHTML = `
+        <strong>${item.probe.name}</strong>
+        <br><small>${t('orbiting') || 'Orbiting'}: ${item.planetName}</small>
+        <br><small>${t('period')}: ${periodText}</small>
+      `;
+      probeItem.style.cursor = 'pointer';
+      probeItem.addEventListener('click', () => {
+        showPlanetInfoCard(item.body, item.planetIndex);
+        // Scroll to space probes section
+        setTimeout(() => {
+          const spaceProbesSection = document.getElementById('spaceProbesSection');
+          if (spaceProbesSection) {
+            spaceProbesSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }, 100);
+      });
+      planetList.appendChild(probeItem);
+    });
+  }
 }
 if (document.getElementById('planetList')) {
   updatePlanetList();
@@ -3502,6 +3564,165 @@ function showPlanetInfoCard(body, planetIndex) {
   } else {
     moonsSection.style.display = 'none';
   }
+  
+  // Add space probes section
+  const planetObj = planetMeshes[planetIndex];
+  let spaceProbesSection = document.getElementById('spaceProbesSection');
+  if (!spaceProbesSection) {
+    // Create space probes section if it doesn't exist
+    spaceProbesSection = document.createElement('div');
+    spaceProbesSection.className = 'info-section';
+    spaceProbesSection.id = 'spaceProbesSection';
+    const spaceProbesTitle = document.createElement('h4');
+    spaceProbesTitle.innerHTML = `${t('spaceProbes')} (<span id="spaceProbeCount">0</span>)`;
+    spaceProbesSection.appendChild(spaceProbesTitle);
+    const spaceProbesContainer = document.createElement('div');
+    spaceProbesContainer.className = 'moons-section';
+    spaceProbesContainer.id = 'spaceProbesContainer';
+    spaceProbesSection.appendChild(spaceProbesContainer);
+    // Insert after moons section
+    if (moonsSection && moonsSection.parentNode) {
+      moonsSection.parentNode.insertBefore(spaceProbesSection, moonsSection.nextSibling);
+    }
+  }
+  
+  const spaceProbesContainer = document.getElementById('spaceProbesContainer');
+  const spaceProbeCount = document.getElementById('spaceProbeCount');
+  
+  if (planetObj && planetObj.spaceProbes && planetObj.spaceProbes.length > 0) {
+    spaceProbesSection.style.display = 'block';
+    if (spaceProbeCount) {
+      spaceProbeCount.textContent = planetObj.spaceProbes.length;
+    }
+    if (spaceProbesContainer) {
+      spaceProbesContainer.innerHTML = '';
+      planetObj.spaceProbes.forEach((probe, probeIndex) => {
+        const probeItem = document.createElement('div');
+        probeItem.className = 'moon-item';
+        const orbitalPeriod = probe.orbit.orbitalPeriod;
+        const periodText = orbitalPeriod < 1 ? `${(orbitalPeriod * 24).toFixed(1)} ${t('hours') || 'hours'}` : `${orbitalPeriod.toFixed(1)} ${t('days')}`;
+        probeItem.innerHTML = `
+          <div class="moon-name">${probe.name}</div>
+          <div class="moon-info">
+            <span>
+              ${t('size')}: ${probe.orbit.semiMajorAxis.toFixed(2)}x ${t('planetRadii')}<br>
+              ${t('period')}: ${periodText}
+            </span>
+          </div>
+          <div class="moon-follow-btn">
+            <button class="follow-moon-btn">${t('followSpaceProbe')}</button>
+          </div>
+        `;
+        probeItem.style.cursor = 'pointer';
+        const probeNameDiv = probeItem.querySelector('.moon-name');
+        const probeInfoDiv = probeItem.querySelector('.moon-info');
+        
+        const showProbeDescription = () => {
+          const translatedProbeInfo = getMoonInfo(body.name, probe.name);
+          const probeDescription = translatedProbeInfo || probe.info || '';
+          
+          // Find info-grid section (planet info)
+          const infoGridSection = document.querySelector('.info-grid')?.closest('.info-section');
+          
+          // Store original planet info if not already stored
+          if (!planetName.dataset.originalName) {
+            planetName.dataset.originalName = body.name.toUpperCase();
+            planetName.dataset.originalType = typeLabels[body.type] || t('celestialBody');
+            planetName.dataset.originalDescription = planetDescription.textContent;
+          }
+          
+          // Hide planet info grid
+          if (infoGridSection) {
+            infoGridSection.style.display = 'none';
+          }
+          
+          // Create or show back to planet button
+          let backToPlanetBtn = document.getElementById('backToPlanetBtn');
+          if (!backToPlanetBtn) {
+            backToPlanetBtn = document.createElement('button');
+            backToPlanetBtn.id = 'backToPlanetBtn';
+            backToPlanetBtn.className = 'follow-planet-btn';
+            backToPlanetBtn.textContent = t('backToPlanet');
+            backToPlanetBtn.style.marginBottom = '15px';
+            
+            // Insert before planet description
+            const planetDescSection = planetDescription.closest('.info-section');
+            if (planetDescSection && planetDescSection.parentNode) {
+              const backButtonSection = document.createElement('div');
+              backButtonSection.className = 'info-section';
+              backButtonSection.appendChild(backToPlanetBtn);
+              planetDescSection.parentNode.insertBefore(backButtonSection, planetDescSection);
+            }
+          } else {
+            backToPlanetBtn.style.display = 'block';
+            backToPlanetBtn.closest('.info-section').style.display = 'block';
+          }
+          
+          // Update planet description with probe info
+          if (planetDescription) {
+            planetDescription.textContent = probeDescription;
+          }
+          
+          // Update header to show probe name
+          if (planetName) {
+            planetName.textContent = probe.name.toUpperCase();
+            planetName.style.cursor = 'pointer';
+            planetName.title = t('clickToReturn') || 'Click to return to planet description';
+          }
+          
+          // Update type badge to show it's a space probe
+          if (planetTypeBadge) {
+            planetTypeBadge.textContent = t('spaceProbes');
+          }
+          
+          // Add click handler to back button to return to planet description
+          backToPlanetBtn.onclick = () => {
+            // Show planet info grid
+            if (infoGridSection) {
+              infoGridSection.style.display = 'block';
+            }
+            
+            // Hide back button
+            if (backToPlanetBtn) {
+              const backButtonSection = backToPlanetBtn.closest('.info-section');
+              if (backButtonSection) {
+                backButtonSection.style.display = 'none';
+              }
+            }
+            
+            // Restore planet info
+            if (planetName) {
+              planetName.textContent = planetName.dataset.originalName;
+              planetName.onclick = null;
+              planetName.style.cursor = 'default';
+              planetName.title = '';
+            }
+            if (planetTypeBadge) {
+              planetTypeBadge.textContent = planetName.dataset.originalType;
+            }
+            if (planetDescription) {
+              planetDescription.textContent = planetName.dataset.originalDescription;
+            }
+          };
+        };
+        
+        probeNameDiv.addEventListener('click', showProbeDescription);
+        probeInfoDiv.addEventListener('click', showProbeDescription);
+        const followProbeBtn = probeItem.querySelector('.follow-moon-btn');
+        followProbeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (planetObj.spaceProbes && planetObj.spaceProbes[probeIndex]) {
+            followSpaceProbe(planetObj.spaceProbes[probeIndex].mesh, probe, body.name);
+            hidePlanetInfoCard();
+          }
+        });
+        spaceProbesContainer.appendChild(probeItem);
+      });
+    }
+  } else {
+    spaceProbesSection.style.display = 'none';
+  }
+  
   card.style.display = 'block';
   currentPlanetIndex = planetIndex;
   updateFollowButtonState(planetIndex);
@@ -3563,6 +3784,25 @@ function followMoon(moonMesh, moonData, parentPlanetName) {
     stopFollowBtn.classList.add('active');
   }
   console.log(`Now following ${moonData.name} of ${parentPlanetName}`);
+}
+
+function followSpaceProbe(probeMesh, probeData, parentPlanetName) {
+  followingTarget = probeMesh;
+  followingType = 'spaceProbe';
+  followingPlanet = { mesh: probeMesh };
+  const distance = Math.max(probeData.orbit.semiMajorAxis * 3, 5);
+  followOffset.set(distance, distance * 0.5, distance);
+  lastPlanetPosition.set(0, 0, 0);
+  userCameraOffset.set(0, 0, 0);
+  controls.enableZoom = true;
+  controls.minDistance = distance * 0.1;
+  controls.maxDistance = distance * 4;
+  const stopFollowBtn = document.getElementById('stopFollowBtn');
+  if (stopFollowBtn) {
+    stopFollowBtn.style.display = 'block';
+    stopFollowBtn.classList.add('active');
+  }
+  console.log(`Now following ${probeData.name} of ${parentPlanetName}`);
 }
 function followSun() {
   followingTarget = sun;
