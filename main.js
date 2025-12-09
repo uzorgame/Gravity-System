@@ -605,6 +605,8 @@ function updateUITexts() {
     }
   }
 }
+// Global variables for orbit visibility
+let showSpaceProbeOrbits = true;
 const scene = new THREE.Scene();
 // Set initial background color (will be replaced when texture loads)
 scene.background = new THREE.Color(0x000814);
@@ -2923,24 +2925,12 @@ celestialBodies.forEach((body) => {
         baseOpacity = 0.04;
       }
       
-      let orbitMat;
-      try {
-        orbitMat = new THREE.LineBasicMaterial({
-          color: orbitColor,
-          emissive: orbitColor,
-          emissiveIntensity: glowIntensity,
-          transparent: true,
-          opacity: baseOpacity,
-          toneMapped: false,
-        });
-      } catch (error) {
-        console.warn("Emissive material failed, using basic material:", error);
-        orbitMat = new THREE.LineBasicMaterial({
-          color: orbitColor,
-          transparent: true,
-          opacity: baseOpacity * 2,
-        });
-      }
+      // LineBasicMaterial doesn't support emissive, use regular material with adjusted opacity
+      const orbitMat = new THREE.LineBasicMaterial({
+        color: orbitColor,
+        transparent: true,
+        opacity: baseOpacity * 1.5, // Slightly brighter to compensate for no emissive
+      });
       
       const orbitLine = new THREE.Line(orbitGeometry, orbitMat);
       // Orbit is relative to planet center, so position at origin
@@ -3212,7 +3202,6 @@ let isPaused = false;
 let currentDate = new Date();
 let timePerFrame = 1000 * 60 * 60 * 24;
 let showOrbits = true;
-let showSpaceProbeOrbits = true;
 let showAsteroids = true;
 let showMoons = true;
 let showPlanetLabels = false;
