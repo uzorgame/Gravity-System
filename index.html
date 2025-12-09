@@ -1205,7 +1205,9 @@
       // Get base path from current location
       const path = window.location.pathname;
       const basePath = path.includes('/Solar-System/') ? '/Solar-System/' : '/';
-      const iconPath = basePath + 'SolarIcon.png';
+      // Add timestamp to force browser to reload the icon (cache busting)
+      const timestamp = new Date().getTime();
+      const iconPath = basePath + 'SolarIcon.png?v=' + timestamp;
       
       // Set all favicon sizes to the same icon
       ['favicon', 'favicon-16', 'favicon-32', 'favicon-192', 'apple-icon'].forEach(id => {
@@ -1214,6 +1216,13 @@
           icon.href = iconPath;
         }
       });
+      
+      // Also set favicon directly for immediate update
+      const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+      link.type = 'image/png';
+      link.rel = 'icon';
+      link.href = iconPath;
+      document.getElementsByTagName('head')[0].appendChild(link);
     })();
     
     function toggleCelestialPanel() {
