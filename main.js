@@ -35,7 +35,7 @@ const translations = {
     trojans: "Trojans",
     kuiper: "Kuiper",
     scattered: "Scattered",
-    solarExplorer: "SOLAR SYSTEM EXPLORER",
+    solarExplorer: "GRAVITY SYSTEM EXPLORER",
     planets: "8 Planets",
     dwarfPlanets: "11 Dwarf Planets",
     asteroidBeltsCount: "4 Asteroid Belts",

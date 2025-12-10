@@ -2,7 +2,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: '/Solar-System/', // GitHub Pages base path
+  base: '/Gravity-System/', // GitHub Pages base path
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
