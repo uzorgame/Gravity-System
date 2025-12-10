@@ -639,6 +639,186 @@ controls.rotateSpeed = 0.3;
 controls.zoomSpeed = 0.8;
 controls.panSpeed = 0.5;
 
+// ========== GRAVITY SIMULATION SYSTEM ==========
+// Гравитационная постоянная (настроена для визуализации)
+let GRAVITY_CONSTANT = 0.1;
+let TIME_STEP = 0.01; // Шаг времени для симуляции
+let USE_GRAVITY_SIMULATION = false; // Переключатель между старым и новым режимом
+
+// Класс для физического тела
+class PhysicsBody {
+  constructor(mesh, pivot, mass, initialPosition, initialVelocity = new THREE.Vector3(0, 0, 0)) {
+    this.mesh = mesh;
+    this.pivot = pivot;
+    this.mass = mass;
+    this.position = initialPosition.clone();
+    this.velocity = initialVelocity.clone();
+    this.acceleration = new THREE.Vector3(0, 0, 0);
+    this.fixed = false; // Если true, тело не двигается (например, Солнце)
+    this.userCreated = false; // Помечает объекты, созданные пользователем
+  }
+
+  updatePosition(deltaTime) {
+    if (this.fixed) return;
+    
+    // Обновляем скорость
+    this.velocity.add(this.acceleration.clone().multiplyScalar(deltaTime));
+    
+    // Обновляем позицию
+    this.position.add(this.velocity.clone().multiplyScalar(deltaTime));
+    
+    // Обновляем визуальную позицию
+    this.pivot.position.copy(this.position);
+    
+    // Сбрасываем ускорение для следующего кадра
+    this.acceleration.set(0, 0, 0);
+  }
+
+  applyForce(force) {
+    if (this.fixed) return;
+    // F = ma, поэтому a = F/m
+    const acceleration = force.clone().divideScalar(this.mass);
+    this.acceleration.add(acceleration);
+  }
+
+  // Применить импульс (для ускорения по клику)
+  applyImpulse(impulse) {
+    if (this.fixed) return;
+    this.velocity.add(impulse);
+  }
+}
+
+// Массив всех физических тел
+const physicsBodies = [];
+
+// Расчет гравитационной силы между двумя телами
+function calculateGravitationalForce(body1, body2) {
+  const distance = new THREE.Vector3();
+  distance.subVectors(body2.position, body1.position);
+  const distanceSquared = distance.lengthSq();
+  
+  // Избегаем деления на ноль
+  if (distanceSquared < 0.01) return new THREE.Vector3(0, 0, 0);
+  
+  const distanceLength = Math.sqrt(distanceSquared);
+  const forceMagnitude = (GRAVITY_CONSTANT * body1.mass * body2.mass) / distanceSquared;
+  
+  // Нормализуем вектор направления
+  const forceDirection = distance.normalize();
+  
+  // Возвращаем вектор силы
+  return forceDirection.multiplyScalar(forceMagnitude);
+}
+
+// Обновление физики всех тел
+function updatePhysics(deltaTime) {
+  if (!USE_GRAVITY_SIMULATION) return;
+  
+  // Рассчитываем гравитационные силы между всеми парами тел
+  for (let i = 0; i < physicsBodies.length; i++) {
+    for (let j = i + 1; j < physicsBodies.length; j++) {
+      const body1 = physicsBodies[i];
+      const body2 = physicsBodies[j];
+      
+      if (body1.fixed && body2.fixed) continue;
+      
+      const force = calculateGravitationalForce(body1, body2);
+      
+      // Применяем силу (третий закон Ньютона)
+      body1.applyForce(force);
+      body2.applyForce(force.clone().multiplyScalar(-1));
+    }
+  }
+  
+  // Обновляем позиции всех тел
+  physicsBodies.forEach(body => {
+    body.updatePosition(deltaTime);
+  });
+}
+
+// Инициализация начальных скоростей для орбитального движения
+function initializeOrbitalVelocities() {
+  physicsBodies.forEach(body => {
+    if (body.fixed) return;
+    
+    // Находим центральное тело (обычно Солнце)
+    const centralBody = physicsBodies.find(b => b.fixed && b.mass > 100);
+    if (!centralBody) return;
+    
+    // Вычисляем расстояние до центрального тела
+    const distance = new THREE.Vector3();
+    distance.subVectors(body.position, centralBody.position);
+    const distanceLength = distance.length();
+    
+    if (distanceLength < 0.1) return;
+    
+    // Вычисляем орбитальную скорость: v = sqrt(G*M/r)
+    const orbitalSpeed = Math.sqrt((GRAVITY_CONSTANT * centralBody.mass) / distanceLength);
+    
+    // Направление скорости перпендикулярно радиусу (тангенциальная скорость)
+    const tangent = new THREE.Vector3(-distance.z, 0, distance.x).normalize();
+    
+    // Устанавливаем начальную скорость
+    body.velocity = tangent.multiplyScalar(orbitalSpeed);
+  });
+}
+
+// Raycasting для клика по планетам
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let selectedBody = null;
+
+// Обработчик клика для ускорения планет (только при зажатом Shift)
+let clickToAccelerateEnabled = false;
+
+function onPlanetClick(event) {
+  if (!USE_GRAVITY_SIMULATION || !clickToAccelerateEnabled) return;
+  if (!event.shiftKey) return; // Только при зажатом Shift
+  
+  event.preventDefault();
+  event.stopPropagation();
+  
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(
+    physicsBodies.map(b => b.mesh).filter(m => m !== null)
+  );
+  
+  if (intersects.length > 0) {
+    const clickedMesh = intersects[0].object;
+    const clickedBody = physicsBodies.find(b => b.mesh === clickedMesh);
+    
+    if (clickedBody && !clickedBody.fixed) {
+      selectedBody = clickedBody;
+      
+      // Вычисляем направление движения (тангенциальное к орбите)
+      const velocityDirection = clickedBody.velocity.length() > 0.01 
+        ? clickedBody.velocity.clone().normalize()
+        : new THREE.Vector3(1, 0, 0); // По умолчанию вправо, если нет скорости
+      
+      // Применяем импульс в направлении движения (ускорение)
+      const impulseStrength = 0.5; // Можно настроить
+      const impulse = velocityDirection.multiplyScalar(impulseStrength);
+      clickedBody.applyImpulse(impulse);
+      
+      // Визуальная обратная связь
+      clickedMesh.scale.setScalar(1.2);
+      setTimeout(() => {
+        clickedMesh.scale.setScalar(1.0);
+      }, 200);
+      
+      console.log(`Accelerated ${clickedBody.mesh.userData.name || 'object'} - New velocity:`, clickedBody.velocity.length());
+    }
+  }
+}
+
+// Добавляем обработчик клика
+renderer.domElement.addEventListener('click', onPlanetClick);
+
+// ========== END GRAVITY SIMULATION SYSTEM ==========
+
 // Create unified loading manager for all resources
 const loadingManager = new THREE.LoadingManager();
 let totalItems = 0;
@@ -701,6 +881,7 @@ const sunMaterial = new THREE.MeshBasicMaterial({
   color: new THREE.Color(1.2, 1.1, 0.9)
 });
 const sun = new THREE.Mesh(new THREE.SphereGeometry(5, 64, 64), sunMaterial);
+sun.userData.name = "Sun"; // Сохраняем имя для raycasting
 scene.add(sun);
 const textureLoader = new THREE.TextureLoader(loadingManager);
 const textureFlare0 = textureLoader.load(`${BASE_URL}textures/lensflare0.png`);
@@ -2829,7 +3010,7 @@ celestialBodies.forEach((body) => {
     const pivot = new THREE.Object3D();
     pivot.add(sun);
     scene.add(pivot);
-    planetMeshes.push({
+    const planetData = {
       mesh: sun,
       pivot: pivot,
       speed: body.speed,
@@ -2837,7 +3018,17 @@ celestialBodies.forEach((body) => {
       type: body.type,
       orbit: null,
       body: body
-    });
+    };
+    planetMeshes.push(planetData);
+    
+    // Создаем физическое тело для Солнца (фиксированное, большая масса)
+    const sunMass = 1000; // Большая масса для Солнца
+    const sunPosition = new THREE.Vector3(0, 0, 0);
+    const sunPhysicsBody = new PhysicsBody(sun, pivot, sunMass, sunPosition);
+    sunPhysicsBody.fixed = true; // Солнце неподвижно
+    physicsBodies.push(sunPhysicsBody);
+    planetData.physicsBody = sunPhysicsBody;
+    
     return;
   }
   
@@ -2881,6 +3072,7 @@ celestialBodies.forEach((body) => {
   }
   mesh.castShadow = true;
   mesh.receiveShadow = true;
+  mesh.userData.name = body.name; // Сохраняем имя для raycasting
   const pivot = new THREE.Object3D();
   pivot.add(mesh);
   mesh.position.x = body.dist;
@@ -3420,7 +3612,7 @@ celestialBodies.forEach((body) => {
       });
     });
   }
-  planetMeshes.push({
+  const planetData = {
     mesh,
     pivot,
     speed: body.speed,
@@ -3429,7 +3621,38 @@ celestialBodies.forEach((body) => {
     type: body.type,
     orbit: orbit,
     body: body
-  });
+  };
+  planetMeshes.push(planetData);
+  
+  // Создаем физическое тело для планеты
+  // Вычисляем начальную позицию на основе расстояния и угла
+  const initialAngle = body.initialAngle !== undefined ? body.initialAngle : 0;
+  const initialPosition = new THREE.Vector3(
+    body.dist * Math.cos(initialAngle),
+    0,
+    body.dist * Math.sin(initialAngle)
+  );
+  
+  // Масса пропорциональна размеру (можно настроить)
+  const mass = Math.pow(body.size, 3) * 10; // Кубическая зависимость от размера
+  
+  // Вычисляем начальную орбитальную скорость для стабильной орбиты
+  const sunBody = physicsBodies.find(b => b.fixed);
+  let initialVelocity = new THREE.Vector3(0, 0, 0);
+  if (sunBody) {
+    const distance = initialPosition.length();
+    if (distance > 0.1) {
+      // Орбитальная скорость: v = sqrt(G*M/r)
+      const orbitalSpeed = Math.sqrt((GRAVITY_CONSTANT * sunBody.mass) / distance);
+      // Тангенциальное направление (перпендикулярно радиусу)
+      const tangent = new THREE.Vector3(-initialPosition.z, 0, initialPosition.x).normalize();
+      initialVelocity = tangent.multiplyScalar(orbitalSpeed);
+    }
+  }
+  
+  const physicsBody = new PhysicsBody(mesh, pivot, mass, initialPosition, initialVelocity);
+  physicsBodies.push(physicsBody);
+  planetData.physicsBody = physicsBody;
 });
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
@@ -3568,7 +3791,7 @@ createMoonLabels();
 function animate() {
   requestAnimationFrame(animate);
   if (frameCount % 60 === 0) {
-    console.log(`Animation running. Frame: ${frameCount}, Paused: ${isPaused}, Speed: ${animationSpeed}`);
+    console.log(`Animation running. Frame: ${frameCount}, Paused: ${isPaused}, Speed: ${animationSpeed}, Gravity: ${USE_GRAVITY_SIMULATION}`);
   }
   frameCount++;
   if (!isPaused) {
@@ -3580,9 +3803,28 @@ function animate() {
       currentDate.setTime(currentDate.getTime() + deltaTime);
     }
     sun.rotation.y += 0.002 * realTimeMultiplier;
+    
+    // Используем физику или старую систему вращения
+    if (USE_GRAVITY_SIMULATION) {
+      // Физическая симуляция
+      const physicsDeltaTime = TIME_STEP * realTimeMultiplier;
+      updatePhysics(physicsDeltaTime);
+      
+      // Обновляем вращение мешей (для визуализации)
+      planetMeshes.forEach((p) => {
+        if (p.physicsBody && !p.physicsBody.fixed) {
+          p.mesh.rotation.y += 0.01 * realTimeMultiplier;
+        }
+      });
+    } else {
+      // Старая система вращения
+      planetMeshes.forEach((p) => {
+        p.pivot.rotation.y += p.speed * realTimeMultiplier;
+        p.mesh.rotation.y += 0.01 * realTimeMultiplier;
+      });
+    }
+    
     planetMeshes.forEach((p) => {
-  p.pivot.rotation.y += p.speed * realTimeMultiplier;
-  p.mesh.rotation.y += 0.01 * realTimeMultiplier;
       if (p.orbit && p.orbit.userData && p.orbit.userData.pulseSpeed) {
         try {
           const time = Date.now() * 0.001;
@@ -3891,6 +4133,245 @@ if (resetBtn) {
     stopFollowingPlanet();
   });
 }
+
+// Gravity Simulation Controls
+const gravityToggleBtn = document.getElementById('gravityToggleBtn');
+const gravityControls = document.getElementById('gravityControls');
+const gravityControl = document.getElementById('gravityControl');
+const gravityValue = document.getElementById('gravityValue');
+const timeStepControl = document.getElementById('timeStepControl');
+const timeStepValue = document.getElementById('timeStepValue');
+const addObjectBtn = document.getElementById('addObjectBtn');
+const resetPhysicsBtn = document.getElementById('resetPhysicsBtn');
+
+if (gravityToggleBtn) {
+  gravityToggleBtn.addEventListener('click', () => {
+    USE_GRAVITY_SIMULATION = !USE_GRAVITY_SIMULATION;
+    gravityToggleBtn.textContent = USE_GRAVITY_SIMULATION ? 'Disable Gravity' : 'Enable Gravity';
+    gravityToggleBtn.classList.toggle('active', USE_GRAVITY_SIMULATION);
+    if (gravityControls) {
+      gravityControls.style.display = USE_GRAVITY_SIMULATION ? 'block' : 'none';
+    }
+    
+    if (USE_GRAVITY_SIMULATION) {
+      // Инициализируем орбитальные скорости при включении
+      initializeOrbitalVelocities();
+    }
+  });
+}
+
+if (gravityControl && gravityValue) {
+  gravityControl.addEventListener('input', (e) => {
+    GRAVITY_CONSTANT = parseFloat(e.target.value);
+    gravityValue.textContent = GRAVITY_CONSTANT.toFixed(2);
+  });
+}
+
+if (timeStepControl && timeStepValue) {
+  timeStepControl.addEventListener('input', (e) => {
+    TIME_STEP = parseFloat(e.target.value);
+    timeStepValue.textContent = TIME_STEP.toFixed(3);
+  });
+}
+
+if (resetPhysicsBtn) {
+  resetPhysicsBtn.addEventListener('click', () => {
+    // Сбрасываем все физические тела к начальным позициям и скоростям
+    physicsBodies.forEach((body, index) => {
+      if (body.fixed) return;
+      
+      const planetData = planetMeshes.find(p => p.physicsBody === body);
+      if (!planetData || !planetData.body) return;
+      
+      const bodyData = planetData.body;
+      const initialAngle = bodyData.initialAngle !== undefined ? bodyData.initialAngle : 0;
+      const initialPosition = new THREE.Vector3(
+        bodyData.dist * Math.cos(initialAngle),
+        0,
+        bodyData.dist * Math.sin(initialAngle)
+      );
+      
+      body.position.copy(initialPosition);
+      body.velocity.set(0, 0, 0);
+      body.acceleration.set(0, 0, 0);
+    });
+    
+    // Переинициализируем орбитальные скорости
+    initializeOrbitalVelocities();
+  });
+}
+
+if (addObjectBtn) {
+  addObjectBtn.addEventListener('click', () => {
+    showAddObjectDialog();
+  });
+}
+
+const clickAccelerateBtn = document.getElementById('clickAccelerateBtn');
+if (clickAccelerateBtn) {
+  clickAccelerateBtn.addEventListener('click', () => {
+    clickToAccelerateEnabled = !clickToAccelerateEnabled;
+    clickAccelerateBtn.textContent = `Click to Accelerate: ${clickToAccelerateEnabled ? 'On (Shift+Click)' : 'Off'}`;
+    clickAccelerateBtn.classList.toggle('active', clickToAccelerateEnabled);
+  });
+}
+
+// Функция для показа диалога добавления объекта
+function showAddObjectDialog() {
+  const dialog = document.createElement('div');
+  dialog.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.95);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    padding: 20px;
+    z-index: 3000;
+    min-width: 400px;
+    color: white;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  `;
+  
+  dialog.innerHTML = `
+    <h3 style="margin-top: 0; text-transform: uppercase; letter-spacing: 1.5px;">Add New Object</h3>
+    <div style="margin-bottom: 15px;">
+      <label style="display: block; margin-bottom: 5px; font-size: 12px; text-transform: uppercase;">Name:</label>
+      <input type="text" id="newObjectName" value="New Object" style="width: 100%; padding: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 2px;">
+    </div>
+    <div style="margin-bottom: 15px;">
+      <label style="display: block; margin-bottom: 5px; font-size: 12px; text-transform: uppercase;">Size:</label>
+      <input type="range" id="newObjectSize" min="0.1" max="2" step="0.1" value="0.5" style="width: 100%;">
+      <span id="newObjectSizeValue" style="font-size: 11px;">0.5</span>
+    </div>
+    <div style="margin-bottom: 15px;">
+      <label style="display: block; margin-bottom: 5px; font-size: 12px; text-transform: uppercase;">Mass:</label>
+      <input type="range" id="newObjectMass" min="1" max="100" step="1" value="10" style="width: 100%;">
+      <span id="newObjectMassValue" style="font-size: 11px;">10</span>
+    </div>
+    <div style="margin-bottom: 15px;">
+      <label style="display: block; margin-bottom: 5px; font-size: 12px; text-transform: uppercase;">Position X:</label>
+      <input type="range" id="newObjectX" min="-50" max="50" step="1" value="20" style="width: 100%;">
+      <span id="newObjectXValue" style="font-size: 11px;">20</span>
+    </div>
+    <div style="margin-bottom: 15px;">
+      <label style="display: block; margin-bottom: 5px; font-size: 12px; text-transform: uppercase;">Position Z:</label>
+      <input type="range" id="newObjectZ" min="-50" max="50" step="1" value="0" style="width: 100%;">
+      <span id="newObjectZValue" style="font-size: 11px;">0</span>
+    </div>
+    <div style="margin-bottom: 15px;">
+      <label style="display: block; margin-bottom: 5px; font-size: 12px; text-transform: uppercase;">Initial Velocity:</label>
+      <input type="range" id="newObjectVelocity" min="0" max="2" step="0.1" value="0.5" style="width: 100%;">
+      <span id="newObjectVelocityValue" style="font-size: 11px;">0.5</span>
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 20px;">
+      <button id="createObjectBtn" style="flex: 1; padding: 10px; background: white; color: black; border: none; border-radius: 2px; cursor: pointer; font-weight: 600; text-transform: uppercase;">Create</button>
+      <button id="cancelObjectBtn" style="flex: 1; padding: 10px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 2px; cursor: pointer; font-weight: 600; text-transform: uppercase;">Cancel</button>
+    </div>
+  `;
+  
+  document.body.appendChild(dialog);
+  
+  // Обновление значений при изменении слайдеров
+  const sizeInput = document.getElementById('newObjectSize');
+  const sizeValue = document.getElementById('newObjectSizeValue');
+  const massInput = document.getElementById('newObjectMass');
+  const massValue = document.getElementById('newObjectMassValue');
+  const xInput = document.getElementById('newObjectX');
+  const xValue = document.getElementById('newObjectXValue');
+  const zInput = document.getElementById('newObjectZ');
+  const zValue = document.getElementById('newObjectZValue');
+  const velocityInput = document.getElementById('newObjectVelocity');
+  const velocityValue = document.getElementById('newObjectVelocityValue');
+  
+  sizeInput.addEventListener('input', (e) => {
+    sizeValue.textContent = parseFloat(e.target.value).toFixed(1);
+  });
+  massInput.addEventListener('input', (e) => {
+    massValue.textContent = parseInt(e.target.value);
+  });
+  xInput.addEventListener('input', (e) => {
+    xValue.textContent = parseInt(e.target.value);
+  });
+  zInput.addEventListener('input', (e) => {
+    zValue.textContent = parseInt(e.target.value);
+  });
+  velocityInput.addEventListener('input', (e) => {
+    velocityValue.textContent = parseFloat(e.target.value).toFixed(1);
+  });
+  
+  document.getElementById('createObjectBtn').addEventListener('click', () => {
+    const name = document.getElementById('newObjectName').value;
+    const size = parseFloat(sizeInput.value);
+    const mass = parseFloat(massInput.value);
+    const x = parseFloat(xInput.value);
+    const z = parseFloat(zInput.value);
+    const velocity = parseFloat(velocityInput.value);
+    
+    createNewObject(name, size, mass, x, z, velocity);
+    document.body.removeChild(dialog);
+  });
+  
+  document.getElementById('cancelObjectBtn').addEventListener('click', () => {
+    document.body.removeChild(dialog);
+  });
+}
+
+// Функция для создания нового объекта
+function createNewObject(name, size, mass, x, z, initialVelocity) {
+  // Создаем геометрию и материал
+  const geo = new THREE.SphereGeometry(size, 32, 32);
+  const material = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(Math.random(), Math.random(), Math.random()),
+    roughness: 0.8,
+    metalness: 0.1
+  });
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.userData.name = name; // Сохраняем имя для raycasting
+  
+  // Создаем pivot
+  const pivot = new THREE.Object3D();
+  pivot.add(mesh);
+  scene.add(pivot);
+  
+  // Начальная позиция
+  const position = new THREE.Vector3(x, 0, z);
+  
+  // Начальная скорость (тангенциальная к радиусу)
+  const radius = new THREE.Vector3(x, 0, z);
+  const tangent = new THREE.Vector3(-radius.z, 0, radius.x).normalize();
+  const velocity = tangent.multiplyScalar(initialVelocity);
+  
+  // Создаем физическое тело
+  const physicsBody = new PhysicsBody(mesh, pivot, mass, position, velocity);
+  physicsBody.userCreated = true;
+  physicsBodies.push(physicsBody);
+  
+  // Добавляем в planetMeshes для совместимости
+  const planetData = {
+    mesh: mesh,
+    pivot: pivot,
+    speed: 0,
+    moons: [],
+    spaceProbes: [],
+    type: 'user',
+    orbit: null,
+    body: {
+      name: name,
+      size: size,
+      dist: Math.sqrt(x*x + z*z),
+      type: 'user'
+    },
+    physicsBody: physicsBody
+  };
+  planetMeshes.push(planetData);
+  
+  console.log(`Created new object: ${name} at (${x}, 0, ${z}) with mass ${mass}`);
+}
+
 const orbitsBtn = document.getElementById('orbitsBtn');
 if (orbitsBtn) {
   orbitsBtn.addEventListener('click', () => {
