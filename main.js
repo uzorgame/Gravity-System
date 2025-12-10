@@ -830,6 +830,8 @@ loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
   totalItems = itemsTotal;
   const percentage = Math.round((itemsLoaded / itemsTotal) * 100);
   
+  console.log(`Loading progress: ${itemsLoaded}/${itemsTotal} (${percentage}%) - ${url}`);
+  
   const loadingPercentage = document.getElementById('loadingPercentage');
   const loadingBar = document.getElementById('loadingBar');
   
@@ -844,7 +846,11 @@ loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
 // Hide loading screen when all resources are loaded
 loadingManager.onLoad = () => {
   console.log("All resources loaded!");
-  // Wait a bit to ensure everything is ready, then hide loading screen
+  hideLoadingScreen();
+};
+
+// Функция для скрытия экрана загрузки
+function hideLoadingScreen() {
   setTimeout(() => {
     const loadingScreen = document.getElementById('loadingScreen');
     if (loadingScreen) {
@@ -857,7 +863,16 @@ loadingManager.onLoad = () => {
       }, 500);
     }
   }, 300);
-};
+}
+
+// Резервный таймер: скрыть loading screen через 10 секунд, даже если onLoad не вызвался
+setTimeout(() => {
+  const loadingScreen = document.getElementById('loadingScreen');
+  if (loadingScreen && !loadingScreen.classList.contains('hidden')) {
+    console.warn("Loading screen timeout - hiding manually. Total items:", totalItems, "Loaded items:", loadedItems);
+    hideLoadingScreen();
+  }
+}, 10000);
 
 loadingManager.onError = (url) => {
   console.error("Error loading resource:", url);
@@ -3022,12 +3037,16 @@ celestialBodies.forEach((body) => {
     planetMeshes.push(planetData);
     
     // Создаем физическое тело для Солнца (фиксированное, большая масса)
-    const sunMass = 1000; // Большая масса для Солнца
-    const sunPosition = new THREE.Vector3(0, 0, 0);
-    const sunPhysicsBody = new PhysicsBody(sun, pivot, sunMass, sunPosition);
-    sunPhysicsBody.fixed = true; // Солнце неподвижно
-    physicsBodies.push(sunPhysicsBody);
-    planetData.physicsBody = sunPhysicsBody;
+    try {
+      const sunMass = 1000; // Большая масса для Солнца
+      const sunPosition = new THREE.Vector3(0, 0, 0);
+      const sunPhysicsBody = new PhysicsBody(sun, pivot, sunMass, sunPosition);
+      sunPhysicsBody.fixed = true; // Солнце неподвижно
+      physicsBodies.push(sunPhysicsBody);
+      planetData.physicsBody = sunPhysicsBody;
+    } catch (error) {
+      console.error("Error creating Sun physics body:", error);
+    }
     
     return;
   }
@@ -3625,34 +3644,38 @@ celestialBodies.forEach((body) => {
   planetMeshes.push(planetData);
   
   // Создаем физическое тело для планеты
-  // Вычисляем начальную позицию на основе расстояния и угла
-  const initialAngle = body.initialAngle !== undefined ? body.initialAngle : 0;
-  const initialPosition = new THREE.Vector3(
-    body.dist * Math.cos(initialAngle),
-    0,
-    body.dist * Math.sin(initialAngle)
-  );
-  
-  // Масса пропорциональна размеру (можно настроить)
-  const mass = Math.pow(body.size, 3) * 10; // Кубическая зависимость от размера
-  
-  // Вычисляем начальную орбитальную скорость для стабильной орбиты
-  const sunBody = physicsBodies.find(b => b.fixed);
-  let initialVelocity = new THREE.Vector3(0, 0, 0);
-  if (sunBody) {
-    const distance = initialPosition.length();
-    if (distance > 0.1) {
-      // Орбитальная скорость: v = sqrt(G*M/r)
-      const orbitalSpeed = Math.sqrt((GRAVITY_CONSTANT * sunBody.mass) / distance);
-      // Тангенциальное направление (перпендикулярно радиусу)
-      const tangent = new THREE.Vector3(-initialPosition.z, 0, initialPosition.x).normalize();
-      initialVelocity = tangent.multiplyScalar(orbitalSpeed);
+  try {
+    // Вычисляем начальную позицию на основе расстояния и угла
+    const initialAngle = body.initialAngle !== undefined ? body.initialAngle : 0;
+    const initialPosition = new THREE.Vector3(
+      body.dist * Math.cos(initialAngle),
+      0,
+      body.dist * Math.sin(initialAngle)
+    );
+    
+    // Масса пропорциональна размеру (можно настроить)
+    const mass = Math.pow(body.size, 3) * 10; // Кубическая зависимость от размера
+    
+    // Вычисляем начальную орбитальную скорость для стабильной орбиты
+    const sunBody = physicsBodies.find(b => b.fixed);
+    let initialVelocity = new THREE.Vector3(0, 0, 0);
+    if (sunBody) {
+      const distance = initialPosition.length();
+      if (distance > 0.1) {
+        // Орбитальная скорость: v = sqrt(G*M/r)
+        const orbitalSpeed = Math.sqrt((GRAVITY_CONSTANT * sunBody.mass) / distance);
+        // Тангенциальное направление (перпендикулярно радиусу)
+        const tangent = new THREE.Vector3(-initialPosition.z, 0, initialPosition.x).normalize();
+        initialVelocity = tangent.multiplyScalar(orbitalSpeed);
+      }
     }
+    
+    const physicsBody = new PhysicsBody(mesh, pivot, mass, initialPosition, initialVelocity);
+    physicsBodies.push(physicsBody);
+    planetData.physicsBody = physicsBody;
+  } catch (error) {
+    console.error(`Error creating physics body for ${body.name}:`, error);
   }
-  
-  const physicsBody = new PhysicsBody(mesh, pivot, mass, initialPosition, initialVelocity);
-  physicsBodies.push(physicsBody);
-  planetData.physicsBody = physicsBody;
 });
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
@@ -4134,86 +4157,103 @@ if (resetBtn) {
   });
 }
 
-// Gravity Simulation Controls
-const gravityToggleBtn = document.getElementById('gravityToggleBtn');
-const gravityControls = document.getElementById('gravityControls');
-const gravityControl = document.getElementById('gravityControl');
-const gravityValue = document.getElementById('gravityValue');
-const timeStepControl = document.getElementById('timeStepControl');
-const timeStepValue = document.getElementById('timeStepValue');
-const addObjectBtn = document.getElementById('addObjectBtn');
-const resetPhysicsBtn = document.getElementById('resetPhysicsBtn');
+// Gravity Simulation Controls (инициализируем после загрузки DOM)
+let gravityToggleBtn, gravityControls, gravityControl, gravityValue;
+let timeStepControl, timeStepValue, addObjectBtn, resetPhysicsBtn;
 
-if (gravityToggleBtn) {
-  gravityToggleBtn.addEventListener('click', () => {
-    USE_GRAVITY_SIMULATION = !USE_GRAVITY_SIMULATION;
-    gravityToggleBtn.textContent = USE_GRAVITY_SIMULATION ? 'Disable Gravity' : 'Enable Gravity';
-    gravityToggleBtn.classList.toggle('active', USE_GRAVITY_SIMULATION);
-    if (gravityControls) {
-      gravityControls.style.display = USE_GRAVITY_SIMULATION ? 'block' : 'none';
-    }
-    
-    if (USE_GRAVITY_SIMULATION) {
-      // Инициализируем орбитальные скорости при включении
-      initializeOrbitalVelocities();
-    }
-  });
-}
+function initializeGravityControls() {
+  gravityToggleBtn = document.getElementById('gravityToggleBtn');
+  gravityControls = document.getElementById('gravityControls');
+  gravityControl = document.getElementById('gravityControl');
+  gravityValue = document.getElementById('gravityValue');
+  timeStepControl = document.getElementById('timeStepControl');
+  timeStepValue = document.getElementById('timeStepValue');
+  addObjectBtn = document.getElementById('addObjectBtn');
+  resetPhysicsBtn = document.getElementById('resetPhysicsBtn');
+  
+  if (!gravityToggleBtn || !gravityControls) {
+    console.warn("Gravity controls not found in DOM");
+    return;
+  }
 
-if (gravityControl && gravityValue) {
-  gravityControl.addEventListener('input', (e) => {
-    GRAVITY_CONSTANT = parseFloat(e.target.value);
-    gravityValue.textContent = GRAVITY_CONSTANT.toFixed(2);
-  });
-}
-
-if (timeStepControl && timeStepValue) {
-  timeStepControl.addEventListener('input', (e) => {
-    TIME_STEP = parseFloat(e.target.value);
-    timeStepValue.textContent = TIME_STEP.toFixed(3);
-  });
-}
-
-if (resetPhysicsBtn) {
-  resetPhysicsBtn.addEventListener('click', () => {
-    // Сбрасываем все физические тела к начальным позициям и скоростям
-    physicsBodies.forEach((body, index) => {
-      if (body.fixed) return;
+  if (gravityToggleBtn) {
+    gravityToggleBtn.addEventListener('click', () => {
+      USE_GRAVITY_SIMULATION = !USE_GRAVITY_SIMULATION;
+      gravityToggleBtn.textContent = USE_GRAVITY_SIMULATION ? 'Disable Gravity' : 'Enable Gravity';
+      gravityToggleBtn.classList.toggle('active', USE_GRAVITY_SIMULATION);
+      if (gravityControls) {
+        gravityControls.style.display = USE_GRAVITY_SIMULATION ? 'block' : 'none';
+      }
       
-      const planetData = planetMeshes.find(p => p.physicsBody === body);
-      if (!planetData || !planetData.body) return;
-      
-      const bodyData = planetData.body;
-      const initialAngle = bodyData.initialAngle !== undefined ? bodyData.initialAngle : 0;
-      const initialPosition = new THREE.Vector3(
-        bodyData.dist * Math.cos(initialAngle),
-        0,
-        bodyData.dist * Math.sin(initialAngle)
-      );
-      
-      body.position.copy(initialPosition);
-      body.velocity.set(0, 0, 0);
-      body.acceleration.set(0, 0, 0);
+      if (USE_GRAVITY_SIMULATION) {
+        // Инициализируем орбитальные скорости при включении
+        initializeOrbitalVelocities();
+      }
     });
-    
-    // Переинициализируем орбитальные скорости
-    initializeOrbitalVelocities();
-  });
+  }
+
+  if (gravityControl && gravityValue) {
+    gravityControl.addEventListener('input', (e) => {
+      GRAVITY_CONSTANT = parseFloat(e.target.value);
+      gravityValue.textContent = GRAVITY_CONSTANT.toFixed(2);
+    });
+  }
+
+  if (timeStepControl && timeStepValue) {
+    timeStepControl.addEventListener('input', (e) => {
+      TIME_STEP = parseFloat(e.target.value);
+      timeStepValue.textContent = TIME_STEP.toFixed(3);
+    });
+  }
+
+  if (resetPhysicsBtn) {
+    resetPhysicsBtn.addEventListener('click', () => {
+      // Сбрасываем все физические тела к начальным позициям и скоростям
+      physicsBodies.forEach((body, index) => {
+        if (body.fixed) return;
+        
+        const planetData = planetMeshes.find(p => p.physicsBody === body);
+        if (!planetData || !planetData.body) return;
+        
+        const bodyData = planetData.body;
+        const initialAngle = bodyData.initialAngle !== undefined ? bodyData.initialAngle : 0;
+        const initialPosition = new THREE.Vector3(
+          bodyData.dist * Math.cos(initialAngle),
+          0,
+          bodyData.dist * Math.sin(initialAngle)
+        );
+        
+        body.position.copy(initialPosition);
+        body.velocity.set(0, 0, 0);
+        body.acceleration.set(0, 0, 0);
+      });
+      
+      // Переинициализируем орбитальные скорости
+      initializeOrbitalVelocities();
+    });
+  }
+
+  if (addObjectBtn) {
+    addObjectBtn.addEventListener('click', () => {
+      showAddObjectDialog();
+    });
+  }
+
+  const clickAccelerateBtn = document.getElementById('clickAccelerateBtn');
+  if (clickAccelerateBtn) {
+    clickAccelerateBtn.addEventListener('click', () => {
+      clickToAccelerateEnabled = !clickToAccelerateEnabled;
+      clickAccelerateBtn.textContent = `Click to Accelerate: ${clickToAccelerateEnabled ? 'On (Shift+Click)' : 'Off'}`;
+      clickAccelerateBtn.classList.toggle('active', clickToAccelerateEnabled);
+    });
+  }
 }
 
-if (addObjectBtn) {
-  addObjectBtn.addEventListener('click', () => {
-    showAddObjectDialog();
-  });
-}
-
-const clickAccelerateBtn = document.getElementById('clickAccelerateBtn');
-if (clickAccelerateBtn) {
-  clickAccelerateBtn.addEventListener('click', () => {
-    clickToAccelerateEnabled = !clickToAccelerateEnabled;
-    clickAccelerateBtn.textContent = `Click to Accelerate: ${clickToAccelerateEnabled ? 'On (Shift+Click)' : 'Off'}`;
-    clickAccelerateBtn.classList.toggle('active', clickToAccelerateEnabled);
-  });
+// Инициализируем контролы гравитации после загрузки DOM
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeGravityControls);
+} else {
+  initializeGravityControls();
 }
 
 // Функция для показа диалога добавления объекта
