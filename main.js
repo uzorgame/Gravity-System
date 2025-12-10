@@ -642,10 +642,38 @@ controls.panSpeed = 0.5;
 
 // ========== GRAVITY SIMULATION SYSTEM ==========
 // Гравитационная постоянная (настроена для визуализации)
-// Увеличена для более стабильных орбит
-let GRAVITY_CONSTANT = 0.5;
-let TIME_STEP = 0.005; // Шаг времени для симуляции (уменьшен для большей точности)
+// Используем масштабированную гравитационную постоянную для стабильных орбит
+let GRAVITY_CONSTANT = 1.0;
+let TIME_STEP = 0.01; // Шаг времени для симуляции
 let USE_GRAVITY_SIMULATION = false; // Переключатель между старым и новым режимом
+
+// Реальные массы объектов (относительно массы Солнца = 1)
+// Массы в единицах массы Солнца (M☉)
+const REAL_MASSES = {
+  'Sun': 1.0,
+  'Mercury': 1.66e-7,
+  'Venus': 2.45e-6,
+  'Earth': 3.00e-6,
+  'Mars': 3.22e-7,
+  'Jupiter': 9.55e-4,
+  'Saturn': 2.86e-4,
+  'Uranus': 4.36e-5,
+  'Neptune': 5.15e-5,
+  'Pluto': 6.55e-9,
+  'Ceres': 4.75e-10,
+  'Eris': 1.27e-8,
+  'Moon': 3.69e-8, // относительно Земли, но мы используем относительно Солнца
+  'Io': 4.70e-8,
+  'Europa': 2.53e-8,
+  'Ganymede': 7.80e-8,
+  'Callisto': 5.66e-8,
+  'Titan': 2.37e-7,
+  'Enceladus': 1.08e-9,
+  'Triton': 2.09e-7
+};
+
+// Масштаб для симуляции (чтобы массы были разумными)
+const MASS_SCALE = 1000; // Увеличиваем массы для более заметного эффекта
 
 // Класс для физического тела
 class PhysicsBody {
@@ -3594,8 +3622,8 @@ celestialBodies.forEach((body) => {
         const probeWorldPos = new THREE.Vector3();
         probePivot.getWorldPosition(probeWorldPos);
         
-        // Масса зонда (очень маленькая)
-        const probeMass = 0.1;
+        // Масса зонда (очень маленькая, но не нулевая)
+        const probeMass = 0.01 * MASS_SCALE;
         
         // Вычисляем начальную орбитальную скорость зонда
         const planetPhysicsBody = planetData.physicsBody;
@@ -3610,10 +3638,8 @@ celestialBodies.forEach((body) => {
           const probeDistance = probeLocalPos.length();
           
           if (probeDistance > 0.1) {
-            // Орбитальная скорость для эллиптической орбиты
-            const orbitalPeriod = probeData.orbit.orbitalPeriod || 1;
-            const angularSpeed = (2 * Math.PI) / (orbitalPeriod * 24 * 3600); // радиан/сек
-            const orbitalSpeed = angularSpeed * probeDistance;
+            // Орбитальная скорость для круговой орбиты: v = sqrt(G*M/r)
+            const orbitalSpeed = Math.sqrt((GRAVITY_CONSTANT * planetPhysicsBody.mass) / probeDistance);
             
             // Тангенциальное направление
             const probeDirection = probeLocalPos.clone().normalize();
@@ -3621,12 +3647,12 @@ celestialBodies.forEach((body) => {
             const probeRelativeVelocity = probeTangent.multiplyScalar(orbitalSpeed);
             
             // Скорость зонда = скорость планеты + относительная скорость
-            const planetVelocity = planetPhysicsBody.velocity.clone();
-            probeVelocity = planetVelocity.add(probeRelativeVelocity);
+            probeVelocity = planetPhysicsBody.velocity.clone().add(probeRelativeVelocity);
           }
         }
         
         const probePhysicsBody = new PhysicsBody(probeMesh, probePivot, probeMass, probeWorldPos, probeVelocity);
+        probePhysicsBody.fixed = false;
         physicsBodies.push(probePhysicsBody);
         probeRef.physicsBody = probePhysicsBody;
       } catch (error) {
@@ -3873,20 +3899,20 @@ celestialBodies.forEach((body) => {
     const currentPosition = new THREE.Vector3();
     pivot.getWorldPosition(currentPosition);
     
-    // Масса пропорциональна размеру (можно настроить)
-    const mass = Math.pow(body.size, 3) * 10; // Кубическая зависимость от размера
+    // Получаем массу из реальных данных или вычисляем на основе размера
+    let mass = REAL_MASSES[body.name] || Math.pow(body.size, 3) * 0.1;
+    mass = mass * MASS_SCALE; // Масштабируем массу
     
     // Вычисляем начальную орбитальную скорость для стабильной орбиты
-    const sunBody = physicsBodies.find(b => b.fixed);
+    const sunBody = physicsBodies.find(b => b.mesh === sun);
     let initialVelocity = new THREE.Vector3(0, 0, 0);
-    if (sunBody) {
+    
+    if (sunBody && body.name !== 'Sun') {
       const distance = currentPosition.length();
       if (distance > 0.1) {
-        // Используем угловую скорость из body.speed (уже настроена для стабильных орбит)
-        // body.speed - это угловая скорость в радианах за единицу времени
-        // Линейная скорость = угловая скорость * радиус
-        const angularSpeed = body.speed || 0.001; // Fallback если нет скорости
-        const orbitalSpeed = angularSpeed * distance;
+        // Используем формулу для круговой орбиты: v = sqrt(G*M/r)
+        // Где G - гравитационная постоянная, M - масса Солнца, r - расстояние
+        const orbitalSpeed = Math.sqrt((GRAVITY_CONSTANT * sunBody.mass) / distance);
         
         // Тангенциальное направление (перпендикулярно радиусу, против часовой стрелки)
         const tangent = new THREE.Vector3(-currentPosition.z, 0, currentPosition.x).normalize();
@@ -3894,7 +3920,11 @@ celestialBodies.forEach((body) => {
       }
     }
     
+    // Для Солнца делаем его неподвижным по умолчанию, но настраиваемым
+    const isSun = body.name === 'Sun';
     const physicsBody = new PhysicsBody(mesh, pivot, mass, currentPosition, initialVelocity);
+    physicsBody.fixed = isSun; // Солнце неподвижно по умолчанию, но можно изменить
+    
     physicsBodies.push(physicsBody);
     planetData.physicsBody = physicsBody;
     
@@ -3906,14 +3936,9 @@ celestialBodies.forEach((body) => {
           const moonWorldPos = new THREE.Vector3();
           moonRef.pivot.getWorldPosition(moonWorldPos);
           
-          // Масса луны пропорциональна размеру
-          const moonMass = Math.pow(moonRef.moonData.size, 3) * 5;
-          
-          // Вычисляем начальную скорость луны
-          // Луна движется вокруг планеты, поэтому её скорость = скорость планеты + орбитальная скорость вокруг планеты
-          const moonAngularSpeed = moonRef.moonData.speed || 0.01;
-          const moonOrbitalRadius = moonRef.moonData.dist;
-          const moonOrbitalSpeed = moonAngularSpeed * moonOrbitalRadius;
+          // Получаем массу луны из реальных данных
+          let moonMass = REAL_MASSES[moonRef.moonData.name] || Math.pow(moonRef.moonData.size, 3) * 0.05;
+          moonMass = moonMass * MASS_SCALE;
           
           // Направление от планеты к луне
           const planetWorldPos = new THREE.Vector3();
@@ -3922,9 +3947,12 @@ celestialBodies.forEach((body) => {
           moonDirection.subVectors(moonWorldPos, planetWorldPos);
           const moonDistance = moonDirection.length();
           
-          // Используем текущую скорость планеты (не initialVelocity, которая может быть устаревшей)
+          // Вычисляем орбитальную скорость луны вокруг планеты
+          // v = sqrt(G*M_planet/r)
           let moonVelocity = physicsBody.velocity.clone();
           if (moonDistance > 0.1) {
+            const moonOrbitalSpeed = Math.sqrt((GRAVITY_CONSTANT * physicsBody.mass) / moonDistance);
+            
             moonDirection.normalize();
             // Тангенциальное направление (перпендикулярно радиусу)
             const moonTangent = new THREE.Vector3(-moonDirection.z, 0, moonDirection.x).normalize();
@@ -3935,8 +3963,51 @@ celestialBodies.forEach((body) => {
           }
           
           const moonPhysicsBody = new PhysicsBody(moonRef.mesh, moonRef.pivot, moonMass, moonWorldPos, moonVelocity);
+          moonPhysicsBody.fixed = false; // Луны всегда подвижны
           physicsBodies.push(moonPhysicsBody);
           moonRef.physicsBody = moonPhysicsBody;
+          
+          // Создаем физические тела для space objects этой луны
+          if (moonRef.spaceObjects && moonRef.spaceObjects.length > 0) {
+            moonRef.spaceObjects.forEach((spaceObjRef) => {
+              try {
+                // Получаем текущую мировую позицию space object
+                const spaceObjWorldPos = new THREE.Vector3();
+                spaceObjRef.pivot.getWorldPosition(spaceObjWorldPos);
+                
+                // Масса space object (очень маленькая)
+                const spaceObjMass = 0.005 * MASS_SCALE;
+                
+                // Вычисляем начальную скорость
+                let spaceObjVelocity = moonPhysicsBody.velocity.clone();
+                
+                // Относительная позиция от луны
+                const spaceObjDirection = new THREE.Vector3();
+                spaceObjDirection.subVectors(spaceObjWorldPos, moonWorldPos);
+                const spaceObjDistance = spaceObjDirection.length();
+                
+                if (spaceObjDistance > 0.01) {
+                  // Орбитальная скорость вокруг луны: v = sqrt(G*M_moon/r)
+                  const spaceObjOrbitalSpeed = Math.sqrt((GRAVITY_CONSTANT * moonPhysicsBody.mass) / spaceObjDistance);
+                  
+                  // Тангенциальное направление
+                  spaceObjDirection.normalize();
+                  const spaceObjTangent = new THREE.Vector3(-spaceObjDirection.z, 0, spaceObjDirection.x).normalize();
+                  const spaceObjRelativeVelocity = spaceObjTangent.multiplyScalar(spaceObjOrbitalSpeed);
+                  
+                  // Скорость = скорость луны + относительная скорость
+                  spaceObjVelocity.add(spaceObjRelativeVelocity);
+                }
+                
+                const spaceObjPhysicsBody = new PhysicsBody(spaceObjRef.mesh, spaceObjRef.pivot, spaceObjMass, spaceObjWorldPos, spaceObjVelocity);
+                spaceObjPhysicsBody.fixed = false;
+                physicsBodies.push(spaceObjPhysicsBody);
+                spaceObjRef.physicsBody = spaceObjPhysicsBody;
+              } catch (error) {
+                console.error(`Error creating physics body for space object ${spaceObjRef.name}:`, error);
+              }
+            });
+          }
         } catch (error) {
           console.error(`Error creating physics body for moon ${moonRef.name}:`, error);
         }
@@ -5701,6 +5772,11 @@ function showObjectSettings(physicsBody) {
     if (massValue) massValue.textContent = physicsBody.mass.toFixed(1);
   }
   
+  const fixedControl = document.getElementById('objectFixedControl');
+  if (fixedControl) {
+    fixedControl.checked = physicsBody.fixed || false;
+  }
+  
   if (velocityXControl) {
     velocityXControl.value = physicsBody.velocity.x;
     const velocityXValue = document.getElementById('objectVelocityXValue');
@@ -5761,9 +5837,9 @@ function onMouseClick(event) {
       });
     }
   });
-  // Добавляем все физические тела для клика
+  // Добавляем все физические тела для клика (включая Солнце)
   physicsBodies.forEach(body => {
-    if (body.mesh && !body.fixed) {
+    if (body.mesh) {
       clickableObjects.push(body.mesh);
     }
   });
@@ -5776,8 +5852,8 @@ function onMouseClick(event) {
     // Находим физическое тело для этого объекта
     const clickedPhysicsBody = physicsBodies.find(b => b.mesh === intersectedObject);
     
-    if (clickedPhysicsBody && !clickedPhysicsBody.fixed) {
-      // Показываем панель настроек для физического объекта
+    if (clickedPhysicsBody) {
+      // Показываем панель настроек для физического объекта (включая Солнце)
       showObjectSettings(clickedPhysicsBody);
       return;
     }
@@ -5915,6 +5991,15 @@ function initializeObjectSettings() {
       velocityZValue.textContent = vel.toFixed(2);
       if (currentSettingsBody) {
         currentSettingsBody.velocity.z = vel;
+      }
+    });
+  }
+  
+  const fixedControl = document.getElementById('objectFixedControl');
+  if (fixedControl) {
+    fixedControl.addEventListener('change', (e) => {
+      if (currentSettingsBody) {
+        currentSettingsBody.fixed = e.target.checked;
       }
     });
   }
