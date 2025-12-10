@@ -874,9 +874,8 @@ function onPlanetClick(event) {
   }
 }
 
-// Обработчик начала перетаскивания
+// Обработчик начала перетаскивания (работает в обоих режимах)
 function onMouseDown(event) {
-  if (!USE_GRAVITY_SIMULATION) return;
   if (event.button !== 0) return; // Только левая кнопка мыши
   
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -911,9 +910,9 @@ function onMouseDown(event) {
   }
 }
 
-// Обработчик перемещения мыши при перетаскивании
+// Обработчик перемещения мыши при перетаскивании (работает в обоих режимах)
 function onMouseMove(event) {
-  if (!USE_GRAVITY_SIMULATION || !isDragging || !draggedBody) return;
+  if (!isDragging || !draggedBody) return;
   
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -935,9 +934,9 @@ function onMouseMove(event) {
   }
 }
 
-// Обработчик окончания перетаскивания
+// Обработчик окончания перетаскивания (работает в обоих режимах)
 function onMouseUp(event) {
-  if (!USE_GRAVITY_SIMULATION || !isDragging) return;
+  if (!isDragging) return;
   
   if (draggedBody && draggedBody.mesh) {
     // Возвращаем нормальный размер
@@ -3588,6 +3587,51 @@ celestialBodies.forEach((body) => {
       });
       
       spaceProbes.push(probeRef);
+      
+      // Создаем физическое тело для космического зонда
+      try {
+        // Получаем текущую мировую позицию зонда
+        const probeWorldPos = new THREE.Vector3();
+        probePivot.getWorldPosition(probeWorldPos);
+        
+        // Масса зонда (очень маленькая)
+        const probeMass = 0.1;
+        
+        // Вычисляем начальную орбитальную скорость зонда
+        const planetPhysicsBody = planetData.physicsBody;
+        let probeVelocity = new THREE.Vector3(0, 0, 0);
+        
+        if (planetPhysicsBody) {
+          // Используем орбитальные параметры зонда
+          const pos = calculateEllipticalOrbit(probeData.orbit, meanAnomaly);
+          const probeLocalPos = new THREE.Vector3(pos.x, pos.y, pos.z);
+          
+          // Расстояние от планеты
+          const probeDistance = probeLocalPos.length();
+          
+          if (probeDistance > 0.1) {
+            // Орбитальная скорость для эллиптической орбиты
+            const orbitalPeriod = probeData.orbit.orbitalPeriod || 1;
+            const angularSpeed = (2 * Math.PI) / (orbitalPeriod * 24 * 3600); // радиан/сек
+            const orbitalSpeed = angularSpeed * probeDistance;
+            
+            // Тангенциальное направление
+            const probeDirection = probeLocalPos.clone().normalize();
+            const probeTangent = new THREE.Vector3(-probeDirection.z, 0, probeDirection.x).normalize();
+            const probeRelativeVelocity = probeTangent.multiplyScalar(orbitalSpeed);
+            
+            // Скорость зонда = скорость планеты + относительная скорость
+            const planetVelocity = planetPhysicsBody.velocity.clone();
+            probeVelocity = planetVelocity.add(probeRelativeVelocity);
+          }
+        }
+        
+        const probePhysicsBody = new PhysicsBody(probeMesh, probePivot, probeMass, probeWorldPos, probeVelocity);
+        physicsBodies.push(probePhysicsBody);
+        probeRef.physicsBody = probePhysicsBody;
+      } catch (error) {
+        console.error(`Error creating physics body for probe ${probeData.name}:`, error);
+      }
     });
   }
   
@@ -3784,7 +3828,8 @@ celestialBodies.forEach((body) => {
             mesh: spaceObjMesh,
             pivot: spaceObjPivot,
             speed: spaceObjData.speed,
-            name: spaceObjData.name
+            name: spaceObjData.name,
+            spaceObjData: spaceObjData
           };
           
           // Store reference for GLB model update (with link to spaceObjRef)
@@ -3877,7 +3922,8 @@ celestialBodies.forEach((body) => {
           moonDirection.subVectors(moonWorldPos, planetWorldPos);
           const moonDistance = moonDirection.length();
           
-          let moonVelocity = initialVelocity.clone();
+          // Используем текущую скорость планеты (не initialVelocity, которая может быть устаревшей)
+          let moonVelocity = physicsBody.velocity.clone();
           if (moonDistance > 0.1) {
             moonDirection.normalize();
             // Тангенциальное направление (перпендикулярно радиусу)
@@ -5626,8 +5672,63 @@ function stopFollowingPlanet() {
 }
 function hidePlanetInfoCard() {
   const card = document.getElementById('planetInfoCard');
-  card.style.display = 'none';
+  if (card) card.style.display = 'none';
 }
+
+// Показ панели настроек объекта
+let currentSettingsBody = null;
+
+function showObjectSettings(physicsBody) {
+  currentSettingsBody = physicsBody;
+  const card = document.getElementById('objectSettingsCard');
+  const nameElement = document.getElementById('objectSettingsName');
+  
+  if (!card || !nameElement) return;
+  
+  // Получаем имя объекта
+  const objectName = physicsBody.mesh.userData.name || 'Unknown Object';
+  nameElement.textContent = objectName.toUpperCase();
+  
+  // Обновляем значения слайдеров
+  const massControl = document.getElementById('objectMassControl');
+  const velocityXControl = document.getElementById('objectVelocityXControl');
+  const velocityYControl = document.getElementById('objectVelocityYControl');
+  const velocityZControl = document.getElementById('objectVelocityZControl');
+  
+  if (massControl) {
+    massControl.value = physicsBody.mass;
+    const massValue = document.getElementById('objectMassValue');
+    if (massValue) massValue.textContent = physicsBody.mass.toFixed(1);
+  }
+  
+  if (velocityXControl) {
+    velocityXControl.value = physicsBody.velocity.x;
+    const velocityXValue = document.getElementById('objectVelocityXValue');
+    if (velocityXValue) velocityXValue.textContent = physicsBody.velocity.x.toFixed(2);
+  }
+  
+  if (velocityYControl) {
+    velocityYControl.value = physicsBody.velocity.y;
+    const velocityYValue = document.getElementById('objectVelocityYValue');
+    if (velocityYValue) velocityYValue.textContent = physicsBody.velocity.y.toFixed(2);
+  }
+  
+  if (velocityZControl) {
+    velocityZControl.value = physicsBody.velocity.z;
+    const velocityZValue = document.getElementById('objectVelocityZValue');
+    if (velocityZValue) velocityZValue.textContent = physicsBody.velocity.z.toFixed(2);
+  }
+  
+  card.style.display = 'block';
+  hidePlanetInfoCard();
+}
+
+function hideObjectSettings() {
+  const card = document.getElementById('objectSettingsCard');
+  if (card) card.style.display = 'none';
+  currentSettingsBody = null;
+}
+
 function onMouseClick(event) {
   if (event.target.closest('.controls') || 
       event.target.closest('.celestial-panel') || 
@@ -5660,10 +5761,27 @@ function onMouseClick(event) {
       });
     }
   });
+  // Добавляем все физические тела для клика
+  physicsBodies.forEach(body => {
+    if (body.mesh && !body.fixed) {
+      clickableObjects.push(body.mesh);
+    }
+  });
   clickableObjects.push(sun);
+  
   const intersects = raycaster.intersectObjects(clickableObjects);
   if (intersects.length > 0) {
     const intersectedObject = intersects[0].object;
+    
+    // Находим физическое тело для этого объекта
+    const clickedPhysicsBody = physicsBodies.find(b => b.mesh === intersectedObject);
+    
+    if (clickedPhysicsBody && !clickedPhysicsBody.fixed) {
+      // Показываем панель настроек для физического объекта
+      showObjectSettings(clickedPhysicsBody);
+      return;
+    }
+    
     if (intersectedObject === sun) {
       // Find Sun in celestialBodies array
       const sunIndex = celestialBodies.findIndex(body => body.name === "Sun");
@@ -5678,10 +5796,21 @@ function onMouseClick(event) {
     const planetIndex = planetMeshObjects.indexOf(intersectedObject);
     if (planetIndex !== -1) {
       const body = celestialBodies[planetIndex];
-      showPlanetInfoCard(body, planetIndex);
+      // Если гравитация включена, показываем настройки, иначе описание
+      if (USE_GRAVITY_SIMULATION) {
+        const physicsBody = planetMeshes[planetIndex].physicsBody;
+        if (physicsBody) {
+          showObjectSettings(physicsBody);
+        } else {
+          showPlanetInfoCard(body, planetIndex);
+        }
+      } else {
+        showPlanetInfoCard(body, planetIndex);
+      }
     }
   } else {
     hidePlanetInfoCard();
+    hideObjectSettings();
   }
 }
 // raycaster и mouse уже объявлены выше для гравитационной симуляции
@@ -5734,6 +5863,109 @@ renderer.domElement.addEventListener('mouseleave', () => {
   mouseMoveDistance = 0;
 });
 document.getElementById('closePlanetInfo').addEventListener('click', hidePlanetInfoCard);
+
+// Инициализация обработчиков для панели настроек объекта
+function initializeObjectSettings() {
+  const closeBtn = document.getElementById('closeObjectSettings');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', hideObjectSettings);
+  }
+  
+  const massControl = document.getElementById('objectMassControl');
+  const massValue = document.getElementById('objectMassValue');
+  if (massControl && massValue) {
+    massControl.addEventListener('input', (e) => {
+      const mass = parseFloat(e.target.value);
+      massValue.textContent = mass.toFixed(1);
+      if (currentSettingsBody) {
+        currentSettingsBody.mass = mass;
+      }
+    });
+  }
+  
+  const velocityXControl = document.getElementById('objectVelocityXControl');
+  const velocityXValue = document.getElementById('objectVelocityXValue');
+  if (velocityXControl && velocityXValue) {
+    velocityXControl.addEventListener('input', (e) => {
+      const vel = parseFloat(e.target.value);
+      velocityXValue.textContent = vel.toFixed(2);
+      if (currentSettingsBody) {
+        currentSettingsBody.velocity.x = vel;
+      }
+    });
+  }
+  
+  const velocityYControl = document.getElementById('objectVelocityYControl');
+  const velocityYValue = document.getElementById('objectVelocityYValue');
+  if (velocityYControl && velocityYValue) {
+    velocityYControl.addEventListener('input', (e) => {
+      const vel = parseFloat(e.target.value);
+      velocityYValue.textContent = vel.toFixed(2);
+      if (currentSettingsBody) {
+        currentSettingsBody.velocity.y = vel;
+      }
+    });
+  }
+  
+  const velocityZControl = document.getElementById('objectVelocityZControl');
+  const velocityZValue = document.getElementById('objectVelocityZValue');
+  if (velocityZControl && velocityZValue) {
+    velocityZControl.addEventListener('input', (e) => {
+      const vel = parseFloat(e.target.value);
+      velocityZValue.textContent = vel.toFixed(2);
+      if (currentSettingsBody) {
+        currentSettingsBody.velocity.z = vel;
+      }
+    });
+  }
+  
+  const accelerationControl = document.getElementById('objectAccelerationControl');
+  const accelerationValue = document.getElementById('objectAccelerationValue');
+  const applyAccelerationBtn = document.getElementById('applyAccelerationBtn');
+  
+  if (accelerationControl && accelerationValue) {
+    accelerationControl.addEventListener('input', (e) => {
+      const accel = parseFloat(e.target.value);
+      accelerationValue.textContent = accel.toFixed(1);
+    });
+  }
+  
+  if (applyAccelerationBtn) {
+    applyAccelerationBtn.addEventListener('click', () => {
+      if (currentSettingsBody && accelerationControl) {
+        const accelValue = parseFloat(accelerationControl.value);
+        // Применяем ускорение в направлении текущей скорости
+        if (currentSettingsBody.velocity.length() > 0.01) {
+          const velocityDirection = currentSettingsBody.velocity.clone().normalize();
+          const acceleration = velocityDirection.multiplyScalar(accelValue);
+          currentSettingsBody.applyImpulse(acceleration);
+        }
+      }
+    });
+  }
+  
+  const resetVelocityBtn = document.getElementById('resetObjectVelocityBtn');
+  if (resetVelocityBtn) {
+    resetVelocityBtn.addEventListener('click', () => {
+      if (currentSettingsBody) {
+        currentSettingsBody.velocity.set(0, 0, 0);
+        if (velocityXControl) velocityXControl.value = 0;
+        if (velocityYControl) velocityYControl.value = 0;
+        if (velocityZControl) velocityZControl.value = 0;
+        if (velocityXValue) velocityXValue.textContent = '0';
+        if (velocityYValue) velocityYValue.textContent = '0';
+        if (velocityZValue) velocityZValue.textContent = '0';
+      }
+    });
+  }
+}
+
+// Инициализируем настройки после загрузки DOM
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeObjectSettings);
+} else {
+  initializeObjectSettings();
+}
 document.getElementById('followPlanetBtn').addEventListener('click', () => {
   if (currentPlanetIndex !== null) {
     if (followingTarget === planetMeshes[currentPlanetIndex] && followingType === 'planet') {

@@ -1215,6 +1215,60 @@
     </div>
   </div>
 
+  <div id="objectSettingsCard" class="planet-info-card" style="display: none;">
+    <div class="planet-info-header">
+      <h2 class="planet-info-title">
+        <span id="objectSettingsIcon">⚙️</span>
+        <span id="objectSettingsName">OBJECT SETTINGS</span>
+      </h2>
+      <button class="close-btn" id="closeObjectSettings">×</button>
+    </div>
+    <div class="planet-info-content">
+      <div class="info-section">
+        <div class="planet-description" id="objectSettingsInstructions">
+          <strong>Инструкции:</strong><br>
+          • Зажмите ЛКМ и перетаскивайте объект для перемещения<br>
+          • Используйте настройки ниже для изменения параметров
+        </div>
+      </div>
+      
+      <div class="info-section">
+        <label style="display: block; margin-bottom: 10px; font-size: 12px; text-transform: uppercase;">Mass (Масса)</label>
+        <input type="range" id="objectMassControl" min="0.1" max="1000" step="0.1" value="10" style="width: 100%;">
+        <span id="objectMassValue" class="value-display">10</span>
+      </div>
+      
+      <div class="info-section">
+        <label style="display: block; margin-bottom: 10px; font-size: 12px; text-transform: uppercase;">Velocity X (Скорость X)</label>
+        <input type="range" id="objectVelocityXControl" min="-5" max="5" step="0.1" value="0" style="width: 100%;">
+        <span id="objectVelocityXValue" class="value-display">0</span>
+      </div>
+      
+      <div class="info-section">
+        <label style="display: block; margin-bottom: 10px; font-size: 12px; text-transform: uppercase;">Velocity Y (Скорость Y)</label>
+        <input type="range" id="objectVelocityYControl" min="-5" max="5" step="0.1" value="0" style="width: 100%;">
+        <span id="objectVelocityYValue" class="value-display">0</span>
+      </div>
+      
+      <div class="info-section">
+        <label style="display: block; margin-bottom: 10px; font-size: 12px; text-transform: uppercase;">Velocity Z (Скорость Z)</label>
+        <input type="range" id="objectVelocityZControl" min="-5" max="5" step="0.1" value="0" style="width: 100%;">
+        <span id="objectVelocityZValue" class="value-display">0</span>
+      </div>
+      
+      <div class="info-section">
+        <label style="display: block; margin-bottom: 10px; font-size: 12px; text-transform: uppercase;">Acceleration (Ускорение)</label>
+        <input type="range" id="objectAccelerationControl" min="0" max="2" step="0.1" value="0" style="width: 100%;">
+        <span id="objectAccelerationValue" class="value-display">0</span>
+        <button id="applyAccelerationBtn" style="width: 100%; margin-top: 10px; padding: 10px; background: white; color: black; border: none; border-radius: 2px; cursor: pointer; font-weight: 600; text-transform: uppercase;">Apply Acceleration</button>
+      </div>
+      
+      <div class="info-section">
+        <button id="resetObjectVelocityBtn" style="width: 100%; padding: 10px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 2px; cursor: pointer; font-weight: 600; text-transform: uppercase;">Reset Velocity</button>
+      </div>
+    </div>
+  </div>
+
   <div class="language-switcher">
     <button class="lang-btn active" id="langEn" data-lang="en">EN</button>
     <button class="lang-btn" id="langUk" data-lang="uk">UA</button>
