@@ -10,6 +10,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 const NASA_API_KEY = "CH3TuB34hg317ulEggcZCMlKgCCPYQeTzdzJDNCz";
 const BASE_URL = import.meta.env.BASE_URL || '/';
+console.log('BASE_URL:', BASE_URL);
 let currentLanguage = localStorage.getItem('appLanguage') || 'en';
 const translations = {
   en: {
@@ -876,6 +877,8 @@ setTimeout(() => {
 
 loadingManager.onError = (url) => {
   console.error("Error loading resource:", url);
+  // Не останавливаем загрузку при ошибке одного ресурса
+  // Продолжаем загрузку остальных ресурсов
 };
 
 const loader = new THREE.TextureLoader(loadingManager);
@@ -2112,8 +2115,10 @@ const stlLoader = new STLLoader(loadingManager);
 let vestaSTLGeometry = null;
 let vestaMeshRef = null; // Reference to vesta mesh for geometry update
 
+const vestaModelPath = `${BASE_URL}Models/Asteroid/Vesta/vesta_moon.stl`;
+console.log('Loading Vesta STL:', vestaModelPath);
 stlLoader.load(
-  `${BASE_URL}Models/Asteroid/Vesta/vesta_moon.stl`,
+  vestaModelPath,
   (geometry) => {
     vestaSTLGeometry = geometry;
     console.log('Vesta STL model loaded successfully');
@@ -2373,8 +2378,10 @@ const mavenRoughnessMap = createMAVENRoughnessMap();
 let spaceObjectMeshesRefs = []; // References to space object meshes for model update
 let spaceProbeMeshesRefs = []; // References to space probe meshes for model update
 
+const emuModelPath = `${BASE_URL}Models/emu_spacesuit.glb`;
+console.log('Loading EMU model:', emuModelPath);
 gltfLoader.load(
-  `${BASE_URL}Models/emu_spacesuit.glb`,
+  emuModelPath,
   (gltf) => {
     emuGLTFModel = gltf;
     console.log('EMU spacesuit GLB model loaded successfully', gltf);
@@ -2597,8 +2604,10 @@ gltfLoader.load(
 );
 
 // Load MAVEN GLB model
+const mavenModelPath = `${BASE_URL}Models/Space probe/Mars/Mars Atmosphere and Volatile EvolutioN (MAVEN) (A).glb`;
+console.log('Loading MAVEN model:', mavenModelPath);
 gltfLoader.load(
-  `${BASE_URL}Models/Space probe/Mars/Mars Atmosphere and Volatile EvolutioN (MAVEN) (A).glb`,
+  mavenModelPath,
   (gltf) => {
     mavenGLTFModel = gltf;
     console.log('MAVEN GLB model loaded successfully');
@@ -3054,7 +3063,13 @@ celestialBodies.forEach((body) => {
   let material;
   if (body.texture) {
     const texturePath = `${BASE_URL}textures/${body.texture}`;
-    const texture = loader.load(texturePath);
+    console.log(`Loading texture: ${texturePath} for ${body.name}`);
+    const texture = loader.load(
+      texturePath,
+      () => console.log(`Texture loaded: ${texturePath}`),
+      undefined,
+      (error) => console.error(`Error loading texture ${texturePath}:`, error)
+    );
     material = new THREE.MeshStandardMaterial({
       map: texture,
       metalness: body.metalness || 0.05, 
