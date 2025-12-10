@@ -5419,8 +5419,7 @@ function onMouseClick(event) {
     hidePlanetInfoCard();
   }
 }
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
+// raycaster и mouse уже объявлены выше для гравитационной симуляции
 window.addEventListener('click', onMouseClick);
 
 // Track camera rotation to prevent accidental planet clicks when viewing space probes
