@@ -739,7 +739,7 @@ function updatePhysics(deltaTime) {
 
 // Инициализация начальных скоростей для орбитального движения
 function initializeOrbitalVelocities() {
-  physicsBodies.forEach(body => {
+  physicsBodies.forEach((body, index) => {
     if (body.fixed) return;
     
     // Находим центральное тело (обычно Солнце)
@@ -753,8 +753,13 @@ function initializeOrbitalVelocities() {
     
     if (distanceLength < 0.1) return;
     
-    // Вычисляем орбитальную скорость: v = sqrt(G*M/r)
-    const orbitalSpeed = Math.sqrt((GRAVITY_CONSTANT * centralBody.mass) / distanceLength);
+    // Находим данные планеты для получения угловой скорости
+    const planetData = planetMeshes.find(p => p.physicsBody === body);
+    const bodyData = planetData ? planetData.body : null;
+    
+    // Используем угловую скорость из body.speed (уже настроена для стабильных орбит)
+    const angularSpeed = bodyData && bodyData.speed ? bodyData.speed : 0.001;
+    const orbitalSpeed = angularSpeed * distanceLength;
     
     // Направление скорости перпендикулярно радиусу (тангенциальная скорость)
     const tangent = new THREE.Vector3(-distance.z, 0, distance.x).normalize();
@@ -927,7 +932,14 @@ async function fetchAsteroidOrbitalElements(designation = 'Ceres') {
       };
     }
   } catch (err) {
-    console.error('Asteroid API error:', err);
+    // CORS ошибки нормальны для NASA API - тихо игнорируем
+    if (err.message && err.message.includes('CORS')) {
+      return null;
+    }
+    // Другие ошибки логируем только в dev режиме
+    if (import.meta.env.DEV) {
+      console.warn('Asteroid API error:', err);
+    }
   }
   return null;
 }
@@ -990,7 +1002,13 @@ async function fetchNEOs() {
     const data = await response.json();
     return data.near_earth_objects || [];
   } catch (err) {
-    console.error('NEO API error:', err);
+    // CORS ошибки нормальны для NASA API - тихо игнорируем
+    if (err.message && err.message.includes('CORS')) {
+      return [];
+    }
+    if (import.meta.env.DEV) {
+      console.warn('NEO API error:', err);
+    }
     return [];
   }
 }
@@ -1001,7 +1019,13 @@ async function fetchSentryObjects() {
     const data = await response.json();
     return data.data || [];
   } catch (err) {
-    console.error('Sentry API error:', err);
+    // CORS ошибки нормальны для NASA API - тихо игнорируем
+    if (err.message && err.message.includes('CORS')) {
+      return [];
+    }
+    if (import.meta.env.DEV) {
+      console.warn('Sentry API error:', err);
+    }
     return [];
   }
 }
@@ -1012,7 +1036,13 @@ async function fetchComets() {
     const data = await response.json();
     return data.data || [];
   } catch (err) {
-    console.error('Comet API error:', err);
+    // CORS ошибки нормальны для NASA API - тихо игнорируем
+    if (err.message && err.message.includes('CORS')) {
+      return [];
+    }
+    if (import.meta.env.DEV) {
+      console.warn('Comet API error:', err);
+    }
     return [];
   }
 }
@@ -3677,9 +3707,13 @@ celestialBodies.forEach((body) => {
     if (sunBody) {
       const distance = initialPosition.length();
       if (distance > 0.1) {
-        // Орбитальная скорость: v = sqrt(G*M/r)
-        const orbitalSpeed = Math.sqrt((GRAVITY_CONSTANT * sunBody.mass) / distance);
-        // Тангенциальное направление (перпендикулярно радиусу)
+        // Используем угловую скорость из body.speed (уже настроена для стабильных орбит)
+        // body.speed - это угловая скорость в радианах за единицу времени
+        // Линейная скорость = угловая скорость * радиус
+        const angularSpeed = body.speed || 0.001; // Fallback если нет скорости
+        const orbitalSpeed = angularSpeed * distance;
+        
+        // Тангенциальное направление (перпендикулярно радиусу, против часовой стрелки)
         const tangent = new THREE.Vector3(-initialPosition.z, 0, initialPosition.x).normalize();
         initialVelocity = tangent.multiplyScalar(orbitalSpeed);
       }
