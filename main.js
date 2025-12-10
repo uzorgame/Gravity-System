@@ -642,8 +642,9 @@ controls.panSpeed = 0.5;
 
 // ========== GRAVITY SIMULATION SYSTEM ==========
 // Гравитационная постоянная (настроена для визуализации)
-let GRAVITY_CONSTANT = 0.1;
-let TIME_STEP = 0.01; // Шаг времени для симуляции
+// Увеличена для более стабильных орбит
+let GRAVITY_CONSTANT = 0.5;
+let TIME_STEP = 0.005; // Шаг времени для симуляции (уменьшен для большей точности)
 let USE_GRAVITY_SIMULATION = false; // Переключатель между старым и новым режимом
 
 // Класс для физического тела
@@ -733,17 +734,58 @@ function updatePhysics(deltaTime) {
   
   // Обновляем позиции всех тел
   physicsBodies.forEach(body => {
-    body.updatePosition(deltaTime);
+    // Не обновляем позицию перетаскиваемого объекта
+    if (!isDragging || body !== draggedBody) {
+      body.updatePosition(deltaTime);
+    }
+  });
+}
+
+// Синхронизация позиций физических тел с текущими позициями в сцене
+function synchronizePhysicsPositions() {
+  physicsBodies.forEach((body) => {
+    if (body.fixed) return;
+    
+    // Получаем текущую мировую позицию из pivot
+    const worldPosition = new THREE.Vector3();
+    body.pivot.getWorldPosition(worldPosition);
+    
+    // Обновляем позицию физического тела
+    body.position.copy(worldPosition);
+    
+    // Сохраняем текущую скорость (не сбрасываем её)
+    // Это позволяет плавно перейти от анимации к физике
   });
 }
 
 // Инициализация начальных скоростей для орбитального движения
 function initializeOrbitalVelocities() {
-  physicsBodies.forEach((body, index) => {
+  physicsBodies.forEach((body) => {
     if (body.fixed) return;
     
-    // Находим центральное тело (обычно Солнце)
-    const centralBody = physicsBodies.find(b => b.fixed && b.mass > 100);
+    // Находим ближайшее массивное тело (Солнце или планета для лун)
+    let centralBody = null;
+    let minDistance = Infinity;
+    
+    physicsBodies.forEach((otherBody) => {
+      if (otherBody.fixed || otherBody === body) return;
+      
+      const distance = new THREE.Vector3();
+      distance.subVectors(body.position, otherBody.position);
+      const distanceLength = distance.length();
+      
+      // Выбираем ближайшее массивное тело (обычно то, вокруг которого орбита)
+      if (distanceLength < minDistance && otherBody.mass > body.mass) {
+        minDistance = distanceLength;
+        centralBody = otherBody;
+      }
+    });
+    
+    // Если не нашли центральное тело, используем Солнце
+    if (!centralBody) {
+      centralBody = physicsBodies.find(b => b.fixed && b.mass > 100);
+    }
+    
     if (!centralBody) return;
     
     // Вычисляем расстояние до центрального тела
@@ -758,7 +800,15 @@ function initializeOrbitalVelocities() {
     const bodyData = planetData ? planetData.body : null;
     
     // Используем угловую скорость из body.speed (уже настроена для стабильных орбит)
-    const angularSpeed = bodyData && bodyData.speed ? bodyData.speed : 0.001;
+    let angularSpeed = 0.001; // Fallback
+    if (bodyData && bodyData.speed) {
+      angularSpeed = bodyData.speed;
+    } else if (planetData && planetData.speed) {
+      angularSpeed = planetData.speed;
+    }
+    
+    // Вычисляем орбитальную скорость для стабильной орбиты
+    // Используем угловую скорость из данных, которая уже настроена для стабильных орбит
     const orbitalSpeed = angularSpeed * distanceLength;
     
     // Направление скорости перпендикулярно радиусу (тангенциальная скорость)
@@ -773,6 +823,10 @@ function initializeOrbitalVelocities() {
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 let selectedBody = null;
+let draggedBody = null;
+let isDragging = false;
+let dragStartPosition = new THREE.Vector3();
+let dragOffset = new THREE.Vector3();
 
 // Обработчик клика для ускорения планет (только при зажатом Shift)
 let clickToAccelerateEnabled = false;
@@ -820,8 +874,86 @@ function onPlanetClick(event) {
   }
 }
 
-// Добавляем обработчик клика
+// Обработчик начала перетаскивания
+function onMouseDown(event) {
+  if (!USE_GRAVITY_SIMULATION) return;
+  if (event.button !== 0) return; // Только левая кнопка мыши
+  
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(
+    physicsBodies.map(b => b.mesh).filter(m => m !== null)
+  );
+  
+  if (intersects.length > 0) {
+    const clickedMesh = intersects[0].object;
+    const clickedBody = physicsBodies.find(b => b.mesh === clickedMesh);
+    
+    if (clickedBody && !clickedBody.fixed) {
+      isDragging = true;
+      draggedBody = clickedBody;
+      
+      // Сохраняем начальную позицию
+      dragStartPosition.copy(clickedBody.position);
+      
+      // Вычисляем смещение
+      const worldPosition = new THREE.Vector3();
+      clickedBody.pivot.getWorldPosition(worldPosition);
+      dragOffset.subVectors(worldPosition, intersects[0].point);
+      
+      // Визуальная обратная связь
+      clickedMesh.scale.setScalar(1.1);
+      
+      event.preventDefault();
+    }
+  }
+}
+
+// Обработчик перемещения мыши при перетаскивании
+function onMouseMove(event) {
+  if (!USE_GRAVITY_SIMULATION || !isDragging || !draggedBody) return;
+  
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  
+  raycaster.setFromCamera(mouse, camera);
+  
+  // Создаем плоскость для перемещения (плоскость XY на уровне объекта)
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -draggedBody.position.y);
+  const intersection = new THREE.Vector3();
+  raycaster.ray.intersectPlane(plane, intersection);
+  
+  if (intersection) {
+    // Обновляем позицию объекта
+    draggedBody.position.copy(intersection).add(dragOffset);
+    draggedBody.pivot.position.copy(draggedBody.position);
+    
+    // Сбрасываем скорость при перетаскивании (чтобы объект не продолжал двигаться)
+    draggedBody.velocity.set(0, 0, 0);
+  }
+}
+
+// Обработчик окончания перетаскивания
+function onMouseUp(event) {
+  if (!USE_GRAVITY_SIMULATION || !isDragging) return;
+  
+  if (draggedBody && draggedBody.mesh) {
+    // Возвращаем нормальный размер
+    draggedBody.mesh.scale.setScalar(1.0);
+  }
+  
+  isDragging = false;
+  draggedBody = null;
+}
+
+// Добавляем обработчики событий
 renderer.domElement.addEventListener('click', onPlanetClick);
+renderer.domElement.addEventListener('mousedown', onMouseDown);
+renderer.domElement.addEventListener('mousemove', onMouseMove);
+renderer.domElement.addEventListener('mouseup', onMouseUp);
+renderer.domElement.addEventListener('mouseleave', onMouseUp); // Если мышь вышла за пределы
 
 // ========== END GRAVITY SIMULATION SYSTEM ==========
 
@@ -3667,13 +3799,15 @@ celestialBodies.forEach((body) => {
         });
       }
       
-      moons.push({
+      const moonRef = {
         mesh: moonMesh,
         pivot: moonPivot,
         speed: moonData.speed,
         spaceObjects: spaceObjects,
-        name: moonData.name
-      });
+        name: moonData.name,
+        moonData: moonData
+      };
+      moons.push(moonRef);
     });
   }
   const planetData = {
@@ -3690,13 +3824,9 @@ celestialBodies.forEach((body) => {
   
   // Создаем физическое тело для планеты
   try {
-    // Вычисляем начальную позицию на основе расстояния и угла
-    const initialAngle = body.initialAngle !== undefined ? body.initialAngle : 0;
-    const initialPosition = new THREE.Vector3(
-      body.dist * Math.cos(initialAngle),
-      0,
-      body.dist * Math.sin(initialAngle)
-    );
+    // Получаем текущую позицию из pivot (чтобы не было скачка при включении гравитации)
+    const currentPosition = new THREE.Vector3();
+    pivot.getWorldPosition(currentPosition);
     
     // Масса пропорциональна размеру (можно настроить)
     const mass = Math.pow(body.size, 3) * 10; // Кубическая зависимость от размера
@@ -3705,7 +3835,7 @@ celestialBodies.forEach((body) => {
     const sunBody = physicsBodies.find(b => b.fixed);
     let initialVelocity = new THREE.Vector3(0, 0, 0);
     if (sunBody) {
-      const distance = initialPosition.length();
+      const distance = currentPosition.length();
       if (distance > 0.1) {
         // Используем угловую скорость из body.speed (уже настроена для стабильных орбит)
         // body.speed - это угловая скорость в радианах за единицу времени
@@ -3714,14 +3844,58 @@ celestialBodies.forEach((body) => {
         const orbitalSpeed = angularSpeed * distance;
         
         // Тангенциальное направление (перпендикулярно радиусу, против часовой стрелки)
-        const tangent = new THREE.Vector3(-initialPosition.z, 0, initialPosition.x).normalize();
+        const tangent = new THREE.Vector3(-currentPosition.z, 0, currentPosition.x).normalize();
         initialVelocity = tangent.multiplyScalar(orbitalSpeed);
       }
     }
     
-    const physicsBody = new PhysicsBody(mesh, pivot, mass, initialPosition, initialVelocity);
+    const physicsBody = new PhysicsBody(mesh, pivot, mass, currentPosition, initialVelocity);
     physicsBodies.push(physicsBody);
     planetData.physicsBody = physicsBody;
+    
+    // Создаем физические тела для лун этой планеты
+    if (planetData.moons && planetData.moons.length > 0) {
+      planetData.moons.forEach((moonRef) => {
+        try {
+          // Получаем текущую мировую позицию луны
+          const moonWorldPos = new THREE.Vector3();
+          moonRef.pivot.getWorldPosition(moonWorldPos);
+          
+          // Масса луны пропорциональна размеру
+          const moonMass = Math.pow(moonRef.moonData.size, 3) * 5;
+          
+          // Вычисляем начальную скорость луны
+          // Луна движется вокруг планеты, поэтому её скорость = скорость планеты + орбитальная скорость вокруг планеты
+          const moonAngularSpeed = moonRef.moonData.speed || 0.01;
+          const moonOrbitalRadius = moonRef.moonData.dist;
+          const moonOrbitalSpeed = moonAngularSpeed * moonOrbitalRadius;
+          
+          // Направление от планеты к луне
+          const planetWorldPos = new THREE.Vector3();
+          physicsBody.pivot.getWorldPosition(planetWorldPos);
+          const moonDirection = new THREE.Vector3();
+          moonDirection.subVectors(moonWorldPos, planetWorldPos);
+          const moonDistance = moonDirection.length();
+          
+          let moonVelocity = initialVelocity.clone();
+          if (moonDistance > 0.1) {
+            moonDirection.normalize();
+            // Тангенциальное направление (перпендикулярно радиусу)
+            const moonTangent = new THREE.Vector3(-moonDirection.z, 0, moonDirection.x).normalize();
+            const moonRelativeVelocity = moonTangent.multiplyScalar(moonOrbitalSpeed);
+            
+            // Начальная скорость = скорость планеты + относительная скорость луны
+            moonVelocity.add(moonRelativeVelocity);
+          }
+          
+          const moonPhysicsBody = new PhysicsBody(moonRef.mesh, moonRef.pivot, moonMass, moonWorldPos, moonVelocity);
+          physicsBodies.push(moonPhysicsBody);
+          moonRef.physicsBody = moonPhysicsBody;
+        } catch (error) {
+          console.error(`Error creating physics body for moon ${moonRef.name}:`, error);
+        }
+      });
+    }
   } catch (error) {
     console.error(`Error creating physics body for ${body.name}:`, error);
   }
@@ -4235,6 +4409,8 @@ function initializeGravityControls() {
       }
       
       if (USE_GRAVITY_SIMULATION) {
+        // Синхронизируем позиции физических тел с текущими позициями в сцене
+        synchronizePhysicsPositions();
         // Инициализируем орбитальные скорости при включении
         initializeOrbitalVelocities();
       }
